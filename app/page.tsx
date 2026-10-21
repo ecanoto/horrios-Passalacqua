@@ -168,46 +168,45 @@ export default function Page() {
     } 
   }
 
-  return <div className="min-h-screen bg-[#f5f8f2] text-slate-900">
+  return <div className="min-h-screen bg-[#f5f8f2] text-slate-950">
     <header className="border-b border-[#d7e8c9] bg-white print:hidden">
-      <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-5 py-3">
-        <div className="flex items-center gap-3">
-          <img src={logo} alt="Escudo E.E.S.T. N° 6" className="size-14 object-contain" />
+      <div className="mx-auto flex max-w-[1500px] flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-5 py-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <img src={logo} alt="Escudo E.E.S.T. N° 6" className="size-12 sm:size-14 object-contain shrink-0" />
           <div>
-            <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-[#168000]">E.E.S.T. N° 6</div>
-            <h1 className="text-lg font-black tracking-tight">Gestión de Horarios y Ausencias</h1>
-            <p className="text-xs text-slate-500">Banfield · Lomas de Zamora</p>
+            <div className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.22em] text-[#168000]">E.E.S.T. N° 6</div>
+            <h1 className="text-base sm:text-lg font-black tracking-tight">Gestión de Horarios y Ausencias</h1>
+            <p className="text-[11px] sm:text-xs text-slate-500">Banfield · Lomas de Zamora</p>
           </div>
         </div>
-        <div className="hidden items-center gap-2 lg:flex">
-          <div className="rounded-full border border-[#d7e8c9] bg-[#f4faed] px-3 py-1.5 text-xs font-semibold text-[#267018]"><span className="mr-1.5 inline-block size-2 rounded-full bg-[#1b9a00]" />Sistema operativo</div>
-          <Button variant="outline" size="sm" onClick={syncSpreadsheet} disabled={syncing}><Download data-icon="inline-start" />{syncing ? 'Conectando…' : 'Sincronizar Drive'}</Button>
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <Button variant="outline" size="sm" onClick={syncSpreadsheet} disabled={syncing}><Download data-icon="inline-start" />{syncing ? 'Conectando…' : 'Sincronizar'}</Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}><Printer data-icon="inline-start" />Imprimir</Button>
         </div>
       </div>
-      <nav className="mx-auto flex max-w-[1500px] gap-1 overflow-x-auto px-5" aria-label="Secciones">
-        <Tab active={view === 'horario'} onClick={() => setView('horario')} icon={<CalendarDays />} label="Horario por curso" />
-        <Tab active={view === 'docentes'} onClick={() => setView('docentes')} icon={<Users />} label="Buscador por docente" />
-        <Tab active={view === 'ausencias'} onClick={() => setView('ausencias')} icon={<UserX />} label="Control de ausencias" />
-        <Tab active={view === 'paro'} onClick={() => setView('paro')} icon={<ShieldCheck />} label="Relevamiento de paro" />
+      <nav className="mx-auto flex max-w-[1500px] gap-1 overflow-x-auto px-4 sm:px-5 scrollbar-none" aria-label="Secciones">
+        <Tab active={view === 'horario'} onClick={() => setView('horario')} icon={<CalendarDays className="size-4 shrink-0" />} label="Horarios" />
+        <Tab active={view === 'docentes'} onClick={() => setView('docentes')} icon={<Users className="size-4 shrink-0" />} label="Docentes" />
+        <Tab active={view === 'ausencias'} onClick={() => setView('ausencias')} icon={<UserX className="size-4 shrink-0" />} label="Ausencias" />
+        <Tab active={view === 'paro'} onClick={() => setView('paro')} icon={<ShieldCheck className="size-4 shrink-0" />} label="Paro" />
       </nav>
     </header>
     
-    <main className="mx-auto max-w-[1500px] px-5 py-6">
+    <main className="mx-auto max-w-[1500px] px-4 sm:px-5 py-4 sm:py-6">
       <div className="mb-6 print:hidden">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center justify-between gap-3">
           <div>
             <p className="mb-1 text-xs font-bold uppercase tracking-[0.15em] text-[#168000]">Panel de control</p>
-            <h2 className="text-2xl font-black tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight">
               {view === 'horario' ? 'Horario semanal, recreos y grupos' : view === 'docentes' ? 'Buscar docentes' : view === 'ausencias' ? 'Base de datos de ausencias y cobertura' : 'Parte diario de paro'}
             </h2>
-            <p className="mt-1 text-sm text-slate-500">Actualización activa · Miércoles 21 de octubre de 2026 · {syncMessage}</p>
+            <p className="mt-1 text-xs sm:text-sm text-slate-500">Actualización activa · {syncMessage}</p>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={exportExcel}><FileSpreadsheet data-icon="inline-start" />Descargar Excel</Button>
-            <Button className="bg-[#168000] text-white hover:bg-[#106500]" onClick={save}>
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={exportExcel}><FileSpreadsheet data-icon="inline-start" />Descargar Excel</Button>
+            <Button className="bg-[#168000] text-white hover:bg-[#106500] flex-1 sm:flex-none" onClick={save}>
               {saved ? <Check data-icon="inline-start" /> : <Cloud data-icon="inline-start" />}
-              {saved ? 'Guardado' : dirty ? `Guardar cambios (${dirty})` : 'Guardar cambios'}
+              {saved ? 'Guardado' : dirty ? `Guardar (${dirty})` : 'Guardar cambios'}
             </Button>
           </div>
         </div>
@@ -219,87 +218,91 @@ export default function Page() {
       {view === 'paro' && <StrikeView blocks={dayBlocks} attendance={attendance} setAttendance={setAttendance} />}
     </main>
     
-    <footer className="mx-auto flex max-w-[1500px] items-center justify-between border-t border-[#d7e8c9] px-5 py-4 text-xs text-slate-500 print:hidden">
+    <footer className="mx-auto flex max-w-[1500px] flex-col sm:flex-row items-center justify-between gap-2 border-t border-[#d7e8c9] px-4 sm:px-5 py-4 text-xs text-slate-500 print:hidden text-center sm:text-left">
       <span>© 2026 E.E.S.T. N° 6 · Sistema de Gestión Escolar</span>
-      <span className="flex items-center gap-1.5"><Zap className="size-3 text-[#79b82a]" />Sincronización en vivo</span>
+      <span className="flex items-center gap-1.5"><Zap className="size-3 text-[#79b82a]" />Sincronización en vivo con Drive</span>
     </footer>
     {editing && <Editor block={editing} onClose={() => setEditing(null)} onSave={updateBlock} onDelete={() => { setBlocks((bs) => bs.filter((b) => b.id !== editing.id)); setEditing(null); setDirty((n) => n + 1) }} />}
   </div>
 }
 
 function Tab({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) { 
-  return <button onClick={onClick} className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-bold transition ${active ? 'border-[#168000] text-[#168000]' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>{icon}<span>{label}</span></button> 
+  return <button onClick={onClick} className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-bold transition whitespace-nowrap ${active ? 'border-[#168000] text-[#168000]' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>{icon}<span>{label}</span></button> 
 }
 
 function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setSelectedDays, visible, courseTimes, setEditing, onAdd }: any) { 
   return <>
-    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-3 shadow-sm">
-      <label className="flex items-center gap-2 text-sm font-bold">Curso 
+    <div className="mb-4 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-3 shadow-sm">
+      <label className="flex items-center justify-between sm:justify-start gap-2 text-sm font-bold">Curso 
         <select value={course} onChange={(e) => setCourse(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold outline-none focus:ring-2 focus:ring-[#9dcc39]">
           {courses.map((c) => <option key={c}>{c}</option>)}
         </select>
       </label>
-      <div className="flex flex-wrap items-center gap-1 rounded-lg bg-slate-100 p-1">
+      <div className="flex flex-wrap items-center gap-1 rounded-lg bg-slate-100 p-1 justify-center">
         {days.map((day) => <button key={day} onClick={() => setSelectedDays((current: string[]) => current.includes(day) ? current.filter((item) => item !== day) : [...current, day])} className={`rounded-md px-2 py-1.5 text-xs font-bold ${selectedDays.includes(day) ? 'bg-white text-[#168000] shadow-sm' : 'text-slate-400'}`}>{day.slice(0, 3)}</button>)}
       </div>
-      <div className="flex rounded-lg bg-slate-100 p-1">
+      <div className="flex rounded-lg bg-slate-100 p-1 justify-center">
         {(['Todos', 'Teoría', 'Taller'] as const).map((x) => <button key={x} onClick={() => setFilter(x)} className={`rounded-md px-3 py-1.5 text-xs font-bold ${filter === x ? 'bg-white text-[#168000] shadow-sm' : 'text-slate-500'}`}>{x === 'Todos' ? 'Todos' : `Solo ${x}`}</button>)}
       </div>
-      <Button className="ml-auto bg-[#168000] text-white hover:bg-[#106500]" onClick={onAdd}><span className="text-lg leading-none">+</span> Agregar bloque / Recreo</Button>
+      <Button className="bg-[#168000] text-white hover:bg-[#106500] sm:ml-auto w-full sm:w-auto" onClick={onAdd}><span className="text-lg leading-none">+</span> Agregar bloque / Recreo</Button>
     </div>
     
-    <div className="mb-4 flex flex-wrap gap-2 text-xs font-semibold">
-      <Legend color="bg-blue-600" label="Titular" />
-      <Legend color="bg-red-600" label="Provisional" />
-      <Legend color="bg-gray-900" label="Titular interino" />
-      <Legend color="bg-green-600" label="Suplente" />
-      <span className="ml-auto text-slate-500">Recreos y horarios específicos por curso · Doble clic para editar</span>
+    <div className="mb-4 flex flex-col sm:flex-row flex-wrap gap-2 text-xs font-semibold justify-between items-start sm:items-center">
+      <div className="flex flex-wrap gap-2">
+        <Legend color="bg-blue-600" label="Titular" />
+        <Legend color="bg-red-600" label="Provisional" />
+        <Legend color="bg-gray-900" label="Titular interino" />
+        <Legend color="bg-green-600" label="Suplente" />
+      </div>
+      <span className="text-slate-500">Desplazá horizontalmente la tabla en celulares · Doble clic para editar</span>
     </div>
 
-    <section className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
-      <div className="grid min-w-[900px] grid-cols-[145px_repeat(5,1fr)] border-b bg-[#f4faed] text-xs font-extrabold uppercase tracking-wider text-[#267018]">
-        <div className="p-3">Horario</div>
-        {days.map((d) => <div key={d} className="border-l border-[#d7e8c9] p-3">{d}</div>)}
-      </div>
-      {courseTimes.map((time: string) => {
-        const isRecreoRow = visible.some((x: Block) => x.horario === time && x.tipo === 'Recreo')
-        return (
-          <div key={time} className={`grid min-h-[110px] min-w-[900px] grid-cols-[145px_repeat(5,1fr)] border-b border-slate-100 ${isRecreoRow ? 'bg-[#fff8d8]' : ''}`}>
-            <div className="flex flex-col justify-center gap-1 p-3">
-              <span className="font-mono text-sm font-bold text-slate-700">{time}</span>
-              {isRecreoRow && <span className="w-fit rounded bg-[#ffe878] px-1.5 py-0.5 text-[10px] font-black uppercase text-[#785c00]">Recreo</span>}
-            </div>
-            {days.map((day) => { 
-              const cellBlocks = visible.filter((x: Block) => x.dia === day && x.horario === time)
-              return (
-                <div key={day} className="border-l border-slate-100 p-2">
-                  <div className={`grid gap-1.5 h-full ${cellBlocks.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                    {cellBlocks.map((b: Block) => (
-                      <BlockCard key={b.id} block={b} onDoubleClick={() => setEditing(b)} />
-                    ))}
+    <div className="overflow-x-auto rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
+      <section className="min-w-[760px]">
+        <div className="grid grid-cols-[130px_repeat(5,1fr)] border-b bg-[#f4faed] text-xs font-extrabold uppercase tracking-wider text-[#267018]">
+          <div className="p-3">Horario</div>
+          {days.map((d) => <div key={d} className="border-l border-[#d7e8c9] p-3">{d}</div>)}
+        </div>
+        {courseTimes.map((time: string) => {
+          const isRecreoRow = visible.some((x: Block) => x.horario === time && x.tipo === 'Recreo')
+          return (
+            <div key={time} className={`grid min-h-[100px] grid-cols-[130px_repeat(5,1fr)] border-b border-slate-100 ${isRecreoRow ? 'bg-[#fff8d8]' : ''}`}>
+              <div className="flex flex-col justify-center gap-1 p-2 sm:p-3">
+                <span className="font-mono text-xs sm:text-sm font-bold text-slate-700">{time}</span>
+                {isRecreoRow && <span className="w-fit rounded bg-[#ffe878] px-1.5 py-0.5 text-[9px] font-black uppercase text-[#785c00]">Recreo</span>}
+              </div>
+              {days.map((day) => { 
+                const cellBlocks = visible.filter((x: Block) => x.dia === day && x.horario === time)
+                return (
+                  <div key={day} className="border-l border-slate-100 p-1.5 sm:p-2">
+                    <div className={`grid gap-1 h-full ${cellBlocks.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                      {cellBlocks.map((b: Block) => (
+                        <BlockCard key={b.id} block={b} onDoubleClick={() => setEditing(b)} />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        )
-      })}
-    </section>
+                )
+              })}
+            </div>
+          )
+        })}
+      </section>
+    </div>
   </> 
 }
 
 function BlockCard({ block, onDoubleClick }: { block: Block; onDoubleClick: () => void }) { 
-  if (block.tipo === 'Recreo') return <button type="button" onDoubleClick={onDoubleClick} onClick={onDoubleClick} className="flex h-full min-h-16 w-full cursor-pointer items-center justify-center rounded-xl border border-[#f1d568] bg-[#fff8d8] text-xs font-bold text-[#866500]">Recreo</button>
+  if (block.tipo === 'Recreo') return <button type="button" onDoubleClick={onDoubleClick} onClick={onDoubleClick} className="flex h-full min-h-14 w-full cursor-pointer items-center justify-center rounded-xl border border-[#f1d568] bg-[#fff8d8] text-xs font-bold text-[#866500]">Recreo</button>
   
   const statusColorClass = block.situacionRevista === 'Titular' ? 'text-blue-700' : block.situacionRevista === 'Provisional' ? 'text-red-700' : 'text-gray-950'
 
   return <div onDoubleClick={onDoubleClick} className={`group cursor-pointer rounded-xl border p-2 transition hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between ${block.tipo === 'Teoría' ? 'border-[#9dcc39] bg-[#eaf7d9] text-[#205d19]' : 'border-slate-300 bg-slate-50 text-slate-700'}`}>
     <div>
       <div className="mb-0.5 flex items-start justify-between gap-1">
-        <p className="text-[11px] font-extrabold leading-tight">{block.materia}</p>
-        {block.grupo && <span className="rounded bg-[#168000] px-1 py-0.5 text-[9px] font-black text-white shrink-0">{block.grupo}</span>}
+        <p className="text-[10px] sm:text-[11px] font-extrabold leading-tight">{block.materia}</p>
+        {block.grupo && <span className="rounded bg-[#168000] px-1 py-0.5 text-[8px] sm:text-[9px] font-black text-white shrink-0">{block.grupo}</span>}
       </div>
-      <div className="flex flex-col text-[10px] font-semibold">
+      <div className="flex flex-col text-[9px] sm:text-[10px] font-semibold">
         {block.docente ? <span className={`${statusColorClass} font-bold`}>{block.docente}</span> : <span className="text-slate-400">Sin docente</span>}
       </div>
     </div>
@@ -326,14 +329,14 @@ function TeacherView({ query, setQuery, teachers, results, setEditing }: any) {
         <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Nombre o apellido..." className="w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-[#9dcc39]" />
       </div>
-      <div className="mt-3 flex flex-col gap-1 max-h-[400px] overflow-y-auto">
+      <div className="mt-3 flex flex-col gap-1 max-h-[300px] sm:max-h-[400px] overflow-y-auto">
         {teachers.filter((t: string) => t.toLowerCase().includes(query.toLowerCase())).map((t: string) => (
           <button key={t} onClick={() => setQuery(t)} className="flex items-center justify-between rounded-lg px-2 py-2 text-left text-sm font-semibold hover:bg-[#f4faed]">{t}<ChevronDown className="size-3 -rotate-90 text-slate-400" /></button>
         ))}
       </div>
     </aside>
     <section className="flex flex-col gap-4">
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat label="Bloques semanales" value={filtered.length} icon={<CalendarDays />} />
         <Stat label="Cursos asignados" value={new Set(filtered.map((b: Block) => b.curso)).size} icon={<Users />} />
         <Stat label="Como titular" value={filtered.filter((b: Block) => b.docente === selected && b.situacionRevista === 'Titular').length} icon={<ShieldCheck />} />
@@ -423,14 +426,14 @@ function AusenciasView({ ausencias, setAusencias, setDirty }: any) {
   }
 
   return <div className="flex flex-col gap-6">
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <Stat label="Ausencias en la selección" value={totalAusencias} icon={<UserX />} />
       <Stat label="Cubiertas por decreto" value={cubiertas} icon={<ShieldCheck />} />
       <Stat label="Sin cubrir" value={sinCubrir} icon={<ShieldAlert />} />
     </div>
 
     {/* Filtros de Búsqueda Avanzada */}
-    <div className="rounded-2xl border border-[#d7e8c9] bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-[#d7e8c9] bg-white p-4 sm:p-5 shadow-sm">
       <h3 className="mb-3 font-black text-base flex items-center gap-2"><Search className="size-4 text-[#168000]" /> Filtrar y buscar ausencias</h3>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Filtrar por Curso
@@ -454,15 +457,15 @@ function AusenciasView({ ausencias, setAusencias, setDirty }: any) {
             <label className="flex flex-col gap-1 text-[11px] font-bold text-slate-600">Hasta <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="rounded-lg border border-slate-200 px-2 py-2 text-xs" /></label>
           </div>
         ) : (
-          <div className="flex items-end pb-1"><span className="text-xs text-slate-400 font-medium">Mostrando registros históricos completos sin límite de fecha.</span></div>
+          <div className="flex items-end pb-1"><span className="text-xs text-slate-400 font-medium">Historial completo sin límite de fecha.</span></div>
         )}
       </div>
     </div>
 
     {/* Formulario de registro rápido */}
-    <div className="rounded-2xl border border-[#d7e8c9] bg-white p-5 shadow-sm">
+    <div className="rounded-2xl border border-[#d7e8c9] bg-white p-4 sm:p-5 shadow-sm">
       <h3 className="mb-4 font-black text-lg">Registrar nueva ausencia docente</h3>
-      <form onSubmit={registrarAusencia} className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+      <form onSubmit={registrarAusencia} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Curso
           <select value={cursoFiltro === 'Todos' ? '1°1°' : cursoFiltro} onChange={(e) => setCursoFiltro(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
             {courses.map((c) => <option key={c}>{c}</option>)}
@@ -486,8 +489,8 @@ function AusenciasView({ ausencias, setAusencias, setDirty }: any) {
         <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Profesor que cubre / Obs.
           <input value={docenteDecreto} onChange={(e) => setDocenteDecreto(e.target.value)} placeholder="Ej. ASPREA" disabled={estadoCob === 'Sin cubrir'} className="rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase disabled:bg-slate-100" />
         </label>
-        <div className="sm:col-span-3 lg:col-span-6 flex justify-end">
-          <Button type="submit" className="bg-[#168000] text-white hover:bg-[#106500]">Registrar ausencia</Button>
+        <div className="sm:col-span-2 lg:col-span-6 flex justify-end">
+          <Button type="submit" className="bg-[#168000] text-white hover:bg-[#106500] w-full sm:w-auto">Registrar ausencia</Button>
         </div>
       </form>
     </div>
@@ -532,7 +535,7 @@ function AusenciasView({ ausencias, setAusencias, setDirty }: any) {
 }
 
 function Stat({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) { 
-  return <div className="rounded-2xl border border-[#d7e8c9] bg-white p-4 shadow-sm"><div className="mb-3 flex items-center justify-between text-[#168000]">{icon}<span className="text-2xl font-black text-slate-900">{value}</span></div><p className="text-xs font-bold text-slate-500">{label}</p></div> 
+  return <div className="rounded-2xl border border-[#d7e8c9] bg-white p-3 sm:p-4 shadow-sm"><div className="mb-2 sm:mb-3 flex items-center justify-between text-[#168000]">{icon}<span className="text-xl sm:text-2xl font-black text-slate-900">{value}</span></div><p className="text-[11px] sm:text-xs font-bold text-slate-500">{label}</p></div> 
 }
 
 function StrikeView({ blocks, attendance, setAttendance }: any) { 
@@ -555,10 +558,10 @@ function StrikeView({ blocks, attendance, setAttendance }: any) {
         </div>
         <span className="text-[11px] text-slate-400">{selectedLabel || 'Seleccioná al menos un curso'}</span>
       </div>
-      <Button variant="outline" className="ml-auto" onClick={() => visibleBlocks.forEach((b: Block) => setAttendance((a: any) => ({ ...a, [b.id]: 'normal' })))}>Marcar todos normal</Button>
+      <Button variant="outline" className="ml-auto w-full sm:w-auto" onClick={() => visibleBlocks.forEach((b: Block) => setAttendance((a: any) => ({ ...a, [b.id]: 'normal' })))}>Marcar todos normal</Button>
     </div>
     
-    <div className="grid gap-3 sm:grid-cols-3">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <Stat label="Bloques relevados" value={visibleBlocks.length} icon={<ListFilter />} />
       <Stat label="Adhesiones al paro" value={visibleAbsentCount} icon={<ShieldCheck />} />
       <Stat label="% acatamiento" value={visibleBlocks.length ? Math.round(visibleAbsentCount / visibleBlocks.length * 100) : 0} icon={<Zap />} />
@@ -623,7 +626,7 @@ function Editor({ block, onClose, onSave, onDelete }: { block: Block; onClose: (
         <Field label="Suplente" wide><input value={draft.suplente ?? ''} onChange={(e) => set('suplente', e.target.value)} placeholder="Opcional" /></Field>
       </div>
       <div className="flex items-center justify-between border-t bg-slate-50 p-4">
-        <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={onDelete}>Eliminar bloque</Button>
+        <Button variant="ghost" className="text-red-600 hover:text-red-700" onDelete={onDelete}>Eliminar bloque</Button>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button className="bg-[#168000] text-white hover:bg-[#106500]" onClick={() => onSave(draft)}>Guardar bloque</Button>
