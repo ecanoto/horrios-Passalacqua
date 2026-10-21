@@ -36,21 +36,20 @@ type AusenciaRecord = {
 }
 
 const logo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-M35qmFS9dpbN14cGWOmnvOvidznySB.png'
-const spreadsheetApi = 'https://script.google.com/macros/s/AKfycby2hODGIztulG57sdt8KzLroLTxXt3zjj2Xf7FdCDCFYinOtyVW7eKfIN_Dm-rUl7zp/exec'
+const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbwl8WYEsBkHgCioij1tuN0UkCqlCOhVMRIWZGB2c7exxe1JOEJOGLo2bKCWK4vwl_mW/exec'
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
 const courses = ['1°1°', '1°2°', '1°3°', '1°4°', '1°5°', '1°6°', '2°1°', '2°2°', '2°3°', '3°1°', '3°2°', '4°1°', '4°2°', '5°1°', '5°2°', '5°3°', '5°6°', '6°1°', '6°2°', '6°3°', '6°6°', '7°1°', '7°2°']
 
 const seed: Block[] = [
-  { id: '1', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–09:40', materia: 'Matemática', docente: 'María González', situacionRevista: 'Titular' },
-  { id: '2', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Martes', horario: '11:50–12:50', materia: 'Cs. Sociales', docente: 'BOGARIN', situacionRevista: 'Provisional' },
-  { id: '3', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', horario: '13:00–15:00', materia: 'Sistemas Tecnológicos', docente: 'RODRIGUEZ, DANIEL', situacionRevista: 'Provisional', grupo: 'Grupo A' },
-  { id: '4', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', horario: '13:00–15:00', materia: 'Procedim. Técnicos', docente: 'FERNANDEZ OSVALDO', situacionRevista: 'Provisional', grupo: 'Grupo B' },
-  { id: '5', curso: '1°1°', turno: 'Teoría', tipo: 'Recreo', dia: 'Lunes', horario: '09:40–09:50', materia: 'Recreo', docente: '', situacionRevista: 'Titular' },
+  { id: '1', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–08:40', materia: 'Cs. Naturales', docente: 'MARTIN', situacionRevista: 'Titular' },
+  { id: '2', curso: '1°1°', turno: 'Teoría', tipo: 'Recreo', dia: 'Lunes', horario: '09:40–09:50', materia: 'Recreo', docente: '', situacionRevista: 'Titular' },
+  { id: '3', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Jueves', horario: '11:50–12:50', materia: 'Cs. Sociales', docente: 'BOGARIN', situacionRevista: 'Provisional' },
+  { id: '4', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', horario: '13:00–15:00', materia: 'Lenguajes Tecnológicos', docente: 'OSORIO MARCELA', situacionRevista: 'Provisional', grupo: 'Grupo A' },
+  { id: '5', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', horario: '13:00–15:00', materia: 'Lenguajes Tecnológicos', docente: 'MAZEI', situacionRevista: 'Provisional', grupo: 'Grupo B' },
 ]
 
 const seedAusencias: AusenciaRecord[] = [
   { id: 'AUS-001', curso: '1°1°', mes: 'Abril', fecha: '2026-04-06', materia: 'Cs. Sociales', docenteAusente: 'BOGARIN', estadoCobertura: 'Cubierto por Decreto', docenteDecreto: 'ASPREA' },
-  { id: 'AUS-002', curso: '1°1°', mes: 'Abril', fecha: '2026-05-07', materia: 'Inglés', docenteAusente: 'CORRADINO', estadoCobertura: 'Sin cubrir', docenteDecreto: 'Sin cubrir' },
 ]
 
 const statusStyle: Record<Status, string> = { Titular: 'text-blue-700 bg-blue-50 border-blue-200', Provisional: 'text-red-700 bg-red-50 border-red-200', 'Titular Interino': 'text-gray-950 bg-gray-100 border-gray-300' }
@@ -72,12 +71,24 @@ export default function Page() {
 
   useEffect(() => { syncSpreadsheet() }, [])
 
+  // Extraer dinámicamente todos los horarios existentes para el curso seleccionado (incluyendo recreos específicos)
+  const courseTimes = useMemo(() => {
+    const courseBlocks = blocks.filter((b) => b.curso === course)
+    const timesSet = new Set(courseBlocks.map((b) => b.horario))
+    // Ordenar de manera lógica por hora de inicio si es posible
+    return Array.from(timesSet).sort((a, b) => a.localeCompare(b))
+  }, [blocks, course])
+
   const visible = blocks.filter((b) => b.curso === course && selectedDays.includes(b.dia) && (filter === 'Todos' || b.tipo === filter || b.tipo === 'Recreo'))
   const teachers = useMemo(() => [...new Set(blocks.flatMap((b) => [b.docente, b.suplente].filter(Boolean)))], [blocks])
   const searchResults = blocks.filter((b) => (b.docente + ' ' + (b.suplente ?? '')).toLowerCase().includes(query.toLowerCase()))
   const dayBlocks = blocks.filter((b) => b.tipo !== 'Recreo')
 
-  function updateBlock(next: Block) { setBlocks((current) => current.map((b) => b.id === next.id ? next : b)); setEditing(null); setDirty((n) => n + 1) }
+  function updateBlock(next: Block) { 
+    setBlocks((current) => current.map((b) => b.id === next.id ? next : b))
+    setEditing(null)
+    setDirty((n) => n + 1) 
+  }
   
   function exportExcel() { 
     const wb = XLSX.utils.book_new()
@@ -95,7 +106,19 @@ export default function Page() {
       const rows = Array.isArray(payload) ? payload : payload.data ?? payload.rows ?? payload.blocks ?? payload.values
       const read = (row: any, ...keys: string[]) => { const found = keys.find((key) => row?.[key] !== undefined); return found ? row[found] : '' }
       if (Array.isArray(rows) && rows.length) {
-        const normalized = rows.map((row: any, index: number) => ({ id: String(read(row, 'id', 'ID') || index + 1), curso: String(read(row, 'curso', 'Curso')), turno: read(row, 'turno', 'Turno') || 'Teoría', tipo: read(row, 'tipo', 'Tipo') || 'Teoría', dia: read(row, 'dia', 'Día', 'Dia'), horario: read(row, 'horario', 'Horario'), materia: read(row, 'materia', 'Materia'), docente: read(row, 'docente', 'Docente'), situacionRevista: read(row, 'situacionRevista', 'Situación Revista', 'Situacion Revista') || 'Titular', suplente: read(row, 'suplente', 'Suplente'), grupo: read(row, 'grupo', 'Grupo') }))
+        const normalized = rows.map((row: any, index: number) => ({ 
+          id: String(read(row, 'id', 'ID') || index + 1), 
+          curso: String(read(row, 'curso', 'Curso')), 
+          turno: read(row, 'turno', 'Turno') || 'Teoría', 
+          tipo: read(row, 'tipo', 'Tipo') || 'Teoría', 
+          dia: read(row, 'dia', 'Día', 'Dia'), 
+          horario: read(row, 'horario', 'Horario'), 
+          materia: read(row, 'materia', 'Materia'), 
+          docente: read(row, 'docente', 'Docente'), 
+          situacionRevista: read(row, 'situacionRevista', 'Situación Revista', 'Situacion Revista') || 'Titular', 
+          suplente: read(row, 'suplente', 'Suplente'), 
+          grupo: read(row, 'grupo', 'Grupo') 
+        }))
         setBlocks(normalized)
         if (payload.ausencias) setAusencias(payload.ausencias)
         setSyncMessage(`Conectado · ${normalized.length} registros`)
@@ -107,8 +130,9 @@ export default function Page() {
   async function save() { 
     setSyncing(true)
     try { 
-      const response = await fetch(spreadsheetApi, { 
+      await fetch(spreadsheetApi, { 
         method: 'POST', 
+        mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' }, 
         body: JSON.stringify({ 
           action: 'replace', 
@@ -116,7 +140,6 @@ export default function Page() {
           ausencias: ausencias 
         }) 
       }) 
-      if (!response.ok) throw new Error('No se pudo guardar') 
       setSaved(true)
       setDirty(0)
       setSyncMessage('Guardado en Google Drive') 
@@ -159,7 +182,7 @@ export default function Page() {
           <div>
             <p className="mb-1 text-xs font-bold uppercase tracking-[0.15em] text-[#168000]">Panel de control</p>
             <h2 className="text-2xl font-black tracking-tight">
-              {view === 'horario' ? 'Horario semanal y grupos' : view === 'docentes' ? 'Buscar docentes' : view === 'ausencias' ? 'Base de datos de ausencias y cobertura' : 'Parte diario de paro'}
+              {view === 'horario' ? 'Horario semanal, recreos y grupos' : view === 'docentes' ? 'Buscar docentes' : view === 'ausencias' ? 'Base de datos de ausencias y cobertura' : 'Parte diario de paro'}
             </h2>
             <p className="mt-1 text-sm text-slate-500">Actualización activa · Miércoles 21 de octubre de 2026 · {syncMessage}</p>
           </div>
@@ -173,7 +196,7 @@ export default function Page() {
         </div>
       </div>
 
-      {view === 'horario' && <ScheduleView course={course} setCourse={setCourse} filter={filter} setFilter={setFilter} selectedDays={selectedDays} setSelectedDays={setSelectedDays} visible={visible} setEditing={setEditing} onAdd={() => setEditing({ id: crypto.randomUUID(), curso: course, turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–09:40', materia: 'Nueva materia', docente: '', situacionRevista: 'Titular' })} />}
+      {view === 'horario' && <ScheduleView course={course} setCourse={setCourse} filter={filter} setFilter={setFilter} selectedDays={selectedDays} setSelectedDays={setSelectedDays} visible={visible} courseTimes={courseTimes} setEditing={setEditing} onAdd={() => setEditing({ id: crypto.randomUUID(), curso: course, turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–08:40', materia: 'Nueva materia', docente: '', situacionRevista: 'Titular' })} />}
       {view === 'docentes' && <TeacherView query={query} setQuery={setQuery} teachers={teachers} results={searchResults} setEditing={setEditing} />}
       {view === 'ausencias' && <AusenciasView ausencias={ausencias} setAusencias={setAusencias} setDirty={setDirty} />}
       {view === 'paro' && <StrikeView blocks={dayBlocks} attendance={attendance} setAttendance={setAttendance} />}
@@ -191,8 +214,7 @@ function Tab({ active, onClick, icon, label }: { active: boolean; onClick: () =>
   return <button onClick={onClick} className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-bold transition ${active ? 'border-[#168000] text-[#168000]' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>{icon}<span>{label}</span></button> 
 }
 
-function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setSelectedDays, visible, setEditing, onAdd }: any) { 
-  const times = ['07:40–09:40', '09:40–09:50', '09:50–11:50', '11:50–12:50', '13:00–15:00', '15:10–17:10', '18:20–20:20']
+function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setSelectedDays, visible, courseTimes, setEditing, onAdd }: any) { 
   return <>
     <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-3 shadow-sm">
       <label className="flex items-center gap-2 text-sm font-bold">Curso 
@@ -206,7 +228,7 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
       <div className="flex rounded-lg bg-slate-100 p-1">
         {(['Todos', 'Teoría', 'Taller'] as const).map((x) => <button key={x} onClick={() => setFilter(x)} className={`rounded-md px-3 py-1.5 text-xs font-bold ${filter === x ? 'bg-white text-[#168000] shadow-sm' : 'text-slate-500'}`}>{x === 'Todos' ? 'Todos' : `Solo ${x}`}</button>)}
       </div>
-      <Button className="ml-auto bg-[#168000] text-white hover:bg-[#106500]" onClick={onAdd}><span className="text-lg leading-none">+</span> Agregar bloque</Button>
+      <Button className="ml-auto bg-[#168000] text-white hover:bg-[#106500]" onClick={onAdd}><span className="text-lg leading-none">+</span> Agregar bloque / Recreo</Button>
     </div>
     
     <div className="mb-4 flex flex-wrap gap-2 text-xs font-semibold">
@@ -214,7 +236,7 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
       <Legend color="bg-red-600" label="Provisional" />
       <Legend color="bg-gray-900" label="Titular interino" />
       <Legend color="bg-green-600" label="Suplente" />
-      <span className="ml-auto text-slate-500">Talleres y grupos se muestran compactos lado a lado · Doble clic para editar</span>
+      <span className="ml-auto text-slate-500">Recreos y horarios específicos por curso · Doble clic para editar</span>
     </div>
 
     <section className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
@@ -222,26 +244,29 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
         <div className="p-3">Horario</div>
         {days.map((d) => <div key={d} className="border-l border-[#d7e8c9] p-3">{d}</div>)}
       </div>
-      {times.map((time) => (
-        <div key={time} className={`grid min-h-[110px] min-w-[900px] grid-cols-[145px_repeat(5,1fr)] border-b border-slate-100 ${time === '09:40–09:50' ? 'bg-[#fff8d8]' : ''}`}>
-          <div className="flex flex-col justify-center gap-1 p-3">
-            <span className="font-mono text-sm font-bold text-slate-700">{time}</span>
-            {time === '09:40–09:50' && <span className="w-fit rounded bg-[#ffe878] px-1.5 py-0.5 text-[10px] font-black uppercase text-[#785c00]">Recreo</span>}
-          </div>
-          {days.map((day) => { 
-            const cellBlocks = visible.filter((x: Block) => x.dia === day && x.horario === time)
-            return (
-              <div key={day} className="border-l border-slate-100 p-2">
-                <div className={`grid gap-1.5 h-full ${cellBlocks.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                  {cellBlocks.map((b: Block) => (
-                    <BlockCard key={b.id} block={b} onDoubleClick={() => setEditing(b)} />
-                  ))}
+      {courseTimes.map((time: string) => {
+        const isRecreoRow = visible.some((x: Block) => x.horario === time && x.tipo === 'Recreo')
+        return (
+          <div key={time} className={`grid min-h-[110px] min-w-[900px] grid-cols-[145px_repeat(5,1fr)] border-b border-slate-100 ${isRecreoRow ? 'bg-[#fff8d8]' : ''}`}>
+            <div className="flex flex-col justify-center gap-1 p-3">
+              <span className="font-mono text-sm font-bold text-slate-700">{time}</span>
+              {isRecreoRow && <span className="w-fit rounded bg-[#ffe878] px-1.5 py-0.5 text-[10px] font-black uppercase text-[#785c00]">Recreo</span>}
+            </div>
+            {days.map((day) => { 
+              const cellBlocks = visible.filter((x: Block) => x.dia === day && x.horario === time)
+              return (
+                <div key={day} className="border-l border-slate-100 p-2">
+                  <div className={`grid gap-1.5 h-full ${cellBlocks.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                    {cellBlocks.map((b: Block) => (
+                      <BlockCard key={b.id} block={b} onDoubleClick={() => setEditing(b)} />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
-        </div>
-      ))}
+              )
+            })}
+          </div>
+        )
+      })}
     </section>
   </> 
 }
@@ -574,14 +599,14 @@ function Editor({ block, onClose, onSave, onDelete }: { block: Block; onClose: (
         <Field label="Materia"><input value={draft.materia} onChange={(e) => set('materia', e.target.value)} /></Field>
         <Field label="Docente"><input value={draft.docente} onChange={(e) => set('docente', e.target.value)} /></Field>
         <Field label="Día"><select value={draft.dia} onChange={(e) => set('dia', e.target.value)}>{days.map((d) => <option key={d}>{d}</option>)}</select></Field>
-        <Field label="Horario"><input value={draft.horario} onChange={(e) => set('horario', e.target.value)} /></Field>
+        <Field label="Horario"><input value={draft.horario} onChange={(e) => set('horario', e.target.value)} placeholder="Ej. 11:50–12:50 o 09:40–09:50" /></Field>
         <Field label="Tipo de horario"><select value={draft.tipo} onChange={(e) => { const tipo = e.target.value as Block['tipo']; setDraft((d) => ({ ...d, tipo, turno: tipo === 'Taller' ? 'Taller' : 'Teoría', materia: tipo === 'Recreo' ? 'Recreo' : d.materia })) }}><option>Teoría</option><option>Taller</option><option>Recreo</option></select></Field>
         <Field label="Grupo"><select value={draft.grupo ?? ''} onChange={(e) => set('grupo', e.target.value)}><option value="">Curso completo</option><option>Grupo A</option><option>Grupo B</option><option>Ambos</option></select></Field>
         <Field label="Situación de revista"><select value={draft.situacionRevista} onChange={(e) => set('situacionRevista', e.target.value)}><option>Titular</option><option>Provisional</option><option>Titular Interino</option></select></Field>
         <Field label="Suplente" wide><input value={draft.suplente ?? ''} onChange={(e) => set('suplente', e.target.value)} placeholder="Opcional" /></Field>
       </div>
       <div className="flex items-center justify-between border-t bg-slate-50 p-4">
-        <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={onDelete}>Eliminar bloque horaria</Button>
+        <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={onDelete}>Eliminar bloque</Button>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button className="bg-[#168000] text-white hover:bg-[#106500]" onClick={() => onSave(draft)}>Guardar bloque</Button>
