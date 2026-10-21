@@ -36,7 +36,7 @@ type AusenciaRecord = {
 }
 
 const logo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-M35qmFS9dpbN14cGWOmnvOvidznySB.png'
-const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbwl8WYEsBkHgCioij1tuN0UkCqlCOhVMRIWZGB2c7exxe1JOEJOGLo2bKCWK4vwl_mW/exec'
+const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbzL_4FweTgmOyI-tPE7uTzUlrNqcGNjW7J4OyXBl6AROApJnFAOPwQSES5DYjaarP1R/exec'
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
 const courses = ['1°1°', '1°2°', '1°3°', '1°4°', '1°5°', '1°6°', '2°1°', '2°2°', '2°3°', '3°1°', '3°2°', '4°1°', '4°2°', '5°1°', '5°2°', '5°3°', '5°6°', '6°1°', '6°2°', '6°3°', '6°6°', '7°1°', '7°2°']
 
@@ -71,11 +71,9 @@ export default function Page() {
 
   useEffect(() => { syncSpreadsheet() }, [])
 
-  // Extraer dinámicamente todos los horarios existentes para el curso seleccionado (incluyendo recreos específicos)
   const courseTimes = useMemo(() => {
     const courseBlocks = blocks.filter((b) => b.curso === course)
     const timesSet = new Set(courseBlocks.map((b) => b.horario))
-    // Ordenar de manera lógica por hora de inicio si es posible
     return Array.from(timesSet).sort((a, b) => a.localeCompare(b))
   }, [blocks, course])
 
@@ -104,7 +102,9 @@ export default function Page() {
       if (!response.ok) throw new Error('No se pudo leer la planilla')
       const payload = await response.json()
       const rows = Array.isArray(payload) ? payload : payload.data ?? payload.rows ?? payload.blocks ?? payload.values
+      
       const read = (row: any, ...keys: string[]) => { const found = keys.find((key) => row?.[key] !== undefined); return found ? row[found] : '' }
+      
       if (Array.isArray(rows) && rows.length) {
         const normalized = rows.map((row: any, index: number) => ({ 
           id: String(read(row, 'id', 'ID') || index + 1), 
@@ -120,11 +120,28 @@ export default function Page() {
           grupo: read(row, 'grupo', 'Grupo') 
         }))
         setBlocks(normalized)
-        if (payload.ausencias) setAusencias(payload.ausencias)
-        setSyncMessage(`Conectado · ${normalized.length} registros`)
-      } else setSyncMessage('Conectado · sin registros nuevos')
-    } catch { setSyncMessage('No se pudo conectar · usando datos locales') }
-    finally { setSyncing(false) }
+      }
+
+      if (payload.ausencias && Array.isArray(payload.ausencias)) {
+        const normAus = payload.ausencias.map((a: any, index: number) => ({
+          id: String(read(a, 'id', 'ID') || `AUS-${index + 1}`),
+          curso: String(read(a, 'curso', 'Curso') || '1°1°'),
+          mes: String(read(a, 'mes', 'Mes') || 'Octubre'),
+          fecha: String(read(a, 'fecha', 'Fecha', 'Fecha / Horario') || new Date().toISOString().split('T')[0]),
+          materia: String(read(a, 'materia', 'Materia') || ''),
+          docenteAusente: String(read(a, 'docenteAusente', 'Docente Ausente', 'docente') || ''),
+          estadoCobertura: (read(a, 'estadoCobertura', 'Estado Cobertura') || 'Sin cubrir') as CoberturaStatus,
+          docenteDecreto: String(read(a, 'docenteDecreto', 'Docente Decreto', 'PF Cubre por Decreto / Observación') || 'Sin cubrir')
+        }))
+        setAusencias(normAus)
+      }
+
+      setSyncMessage(`Conectado exitosamente`)
+    } catch { 
+      setSyncMessage('No se pudo conectar · usando datos locales') 
+    } finally { 
+      setSyncing(false) 
+    }
   }
 
   async function save() { 
