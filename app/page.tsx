@@ -3,34 +3,62 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { Button } from '@/components/ui/button'
-import { CalendarDays, Check, ChevronDown, Cloud, Download, FileSpreadsheet, GripVertical, ListFilter, Pencil, Printer, Search, Settings2, ShieldCheck, Upload, Users, X, Zap } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, Cloud, Download, FileSpreadsheet, GripVertical, ListFilter, Pencil, Printer, Search, ShieldAlert, ShieldCheck, UserX, Users, X, Zap } from 'lucide-react'
 
-type View = 'horario' | 'docentes' | 'paro'
+type View = 'horario' | 'docentes' | 'paro' | 'ausencias'
 type Status = 'Titular' | 'Provisional' | 'Titular Interino'
 type Attendance = 'normal' | 'paro' | 'licencia'
+type CoberturaStatus = 'Cubierto por Decreto' | 'Sin cubrir'
 
-type CourseSelection = 'Todos los cursos' | string
-type Block = { id: string; curso: string; turno: 'Teoría' | 'Taller'; tipo: 'Teoría' | 'Taller' | 'Recreo'; dia: string; horario: string; materia: string; docente: string; situacionRevista: Status; suplente?: string; grupo?: string }
+type Block = { 
+  id: string; 
+  curso: string; 
+  turno: 'Teoría' | 'Taller'; 
+  tipo: 'Teoría' | 'Taller' | 'Recreo'; 
+  dia: string; 
+  horario: string; 
+  materia: string; 
+  docente: string; 
+  situacionRevista: Status; 
+  suplente?: string; 
+  grupo?: string 
+}
+
+type AusenciaRecord = {
+  id: string;
+  curso: string;
+  mes: string;
+  fecha: string;
+  materia: string;
+  docenteAusente: string;
+  estadoCobertura: CoberturaStatus;
+  docenteDecreto: string;
+}
 
 const logo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-M35qmFS9dpbN14cGWOmnvOvidznySB.png'
 const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbw-euMAeEFpzTZNBAtYb-MBcotBFBKXXusLiludf6KaXrue_e7ygSgbC3vl9fJTZ16B/exec'
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
 const courses = ['1°1°', '1°2°', '1°3°', '1°4°', '1°5°', '1°6°', '2°1°', '2°2°', '2°3°', '3°1°', '3°2°', '4°1°', '4°2°', '5°1°', '5°2°', '5°3°', '5°6°', '6°1°', '6°2°', '6°3°', '6°6°', '7°1°', '7°2°']
+
 const seed: Block[] = [
   { id: '1', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–09:40', materia: 'Matemática', docente: 'María González', situacionRevista: 'Titular' },
   { id: '2', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Martes', horario: '09:50–11:50', materia: 'Prácticas del Lenguaje', docente: 'Carlos Ramírez', situacionRevista: 'Provisional' },
   { id: '3', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', horario: '13:00–15:00', materia: 'Taller de Tecnología', docente: 'Juan Passalacqua', situacionRevista: 'Titular Interino', suplente: 'Lucía Fernández', grupo: 'Grupo A' },
-  { id: '4', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Jueves', horario: '15:10–17:10', materia: 'Sistemas Tecnológicos', docente: 'Ana Torres', situacionRevista: 'Titular', grupo: 'Grupo B' },
+  { id: '4', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', horario: '13:00–15:00', materia: 'Taller de Tecnología', docente: 'Pedro Gómez', situacionRevista: 'Titular', grupo: 'Grupo B' },
   { id: '5', curso: '1°1°', turno: 'Teoría', tipo: 'Recreo', dia: 'Lunes', horario: '09:40–09:50', materia: 'Recreo', docente: '', situacionRevista: 'Titular' },
-  { id: '6', curso: '2°3°', turno: 'Teoría', tipo: 'Teoría', dia: 'Viernes', horario: '18:20–20:20', materia: 'Física', docente: 'María González', situacionRevista: 'Titular' },
+]
+
+const seedAusencias: AusenciaRecord[] = [
+  { id: 'AUS-001', curso: '1°1°', mes: 'Abril', fecha: '2026-04-06', materia: 'Cs. Sociales', docenteAusente: 'BOGARIN', estadoCobertura: 'Cubierto por Decreto', docenteDecreto: 'ASPREA' },
+  { id: 'AUS-002', curso: '1°1°', mes: 'Abril', fecha: '2026-05-07', materia: 'Inglés', docenteAusente: 'CORRADINO', estadoCobertura: 'Sin cubrir', docenteDecreto: 'Sin cubrir' },
 ]
 
 const statusStyle: Record<Status, string> = { Titular: 'text-blue-700 bg-blue-50 border-blue-200', Provisional: 'text-red-700 bg-red-50 border-red-200', 'Titular Interino': 'text-gray-950 bg-gray-100 border-gray-300' }
-const statusDot: Record<Status, string> = { Titular: 'bg-blue-600', Provisional: 'bg-red-600', 'Titular Interino': 'bg-gray-900' }
 
 export default function Page() {
   const [view, setView] = useState<View>('horario')
   const [blocks, setBlocks] = useState(seed)
+  const [ausencias, setAusencias] = useState<AusenciaRecord[]>(seedAusencias)
   const [course, setCourse] = useState('1°1°')
   const [filter, setFilter] = useState<'Todos' | 'Teoría' | 'Taller'>('Todos')
   const [selectedDays, setSelectedDays] = useState(days)
@@ -48,10 +76,16 @@ export default function Page() {
   const teachers = useMemo(() => [...new Set(blocks.flatMap((b) => [b.docente, b.suplente].filter(Boolean)))], [blocks])
   const searchResults = blocks.filter((b) => (b.docente + ' ' + (b.suplente ?? '')).toLowerCase().includes(query.toLowerCase()))
   const dayBlocks = blocks.filter((b) => b.tipo !== 'Recreo')
-  const absentCount = Object.values(attendance).filter((x) => x === 'paro').length
 
   function updateBlock(next: Block) { setBlocks((current) => current.map((b) => b.id === next.id ? next : b)); setEditing(null); setDirty((n) => n + 1) }
-  function exportExcel(rows = blocks) { const data = rows.map(({ id, ...row }) => ({ ...row, 'Situación Revista': row.situacionRevista })); const book = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(book, XLSX.utils.json_to_sheet(data), 'DATA'); XLSX.writeFile(book, 'horarios-eest6.xlsx') }
+  
+  function exportExcel() { 
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(blocks.map(({ id, ...r }) => ({ ...r, 'Situación Revista': r.situacionRevista }))), 'DATA')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ausencias), 'AUSENCIAS')
+    XLSX.writeFile(wb, 'gestion-escolar-eest6.xlsx') 
+  }
+
   async function syncSpreadsheet() {
     setSyncing(true)
     try {
@@ -63,37 +97,444 @@ export default function Page() {
       if (Array.isArray(rows) && rows.length) {
         const normalized = rows.map((row: any, index: number) => ({ id: String(read(row, 'id', 'ID') || index + 1), curso: String(read(row, 'curso', 'Curso')), turno: read(row, 'turno', 'Turno') || 'Teoría', tipo: read(row, 'tipo', 'Tipo') || 'Teoría', dia: read(row, 'dia', 'Día', 'Dia'), horario: read(row, 'horario', 'Horario'), materia: read(row, 'materia', 'Materia'), docente: read(row, 'docente', 'Docente'), situacionRevista: read(row, 'situacionRevista', 'Situación Revista', 'Situacion Revista') || 'Titular', suplente: read(row, 'suplente', 'Suplente'), grupo: read(row, 'grupo', 'Grupo') }))
         setBlocks(normalized)
+        if (payload.ausencias) setAusencias(payload.ausencias)
         setSyncMessage(`Conectado · ${normalized.length} registros`)
       } else setSyncMessage('Conectado · sin registros nuevos')
     } catch { setSyncMessage('No se pudo conectar · usando datos locales') }
     finally { setSyncing(false) }
   }
-  async function save() { setSyncing(true); try { const response = await fetch(spreadsheetApi, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'replace', rows: blocks.map(({ id, ...row }) => row), ausencias: Object.entries(attendance).filter(([, estado]) => estado !== 'normal').map(([id, estado]) => ({ id, estado })) }) }); if (!response.ok) throw new Error('No se pudo guardar'); setSaved(true); setDirty(0); setSyncMessage('Guardado en Google Drive'); setTimeout(() => setSaved(false), 2600) } catch { setSyncMessage('No se pudo guardar en Google Drive'); } finally { setSyncing(false) } }
+
+  async function save() { 
+    setSyncing(true)
+    try { 
+      const response = await fetch(spreadsheetApi, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+          action: 'replace', 
+          rows: blocks.map(({ id, ...row }) => row), 
+          ausencias: ausencias 
+        }) 
+      }) 
+      if (!response.ok) throw new Error('No se pudo guardar') 
+      setSaved(true)
+      setDirty(0)
+      setSyncMessage('Guardado en Google Drive') 
+      setTimeout(() => setSaved(false), 2600) 
+    } catch { 
+      setSyncMessage('No se pudo guardar en Google Drive') 
+    } finally { 
+      setSyncing(false) 
+    } 
+  }
 
   return <div className="min-h-screen bg-[#f5f8f2] text-slate-900">
     <header className="border-b border-[#d7e8c9] bg-white print:hidden">
       <div className="mx-auto flex max-w-[1500px] items-center justify-between gap-4 px-5 py-3">
-        <div className="flex items-center gap-3"><img src={logo} alt="Escudo E.E.S.T. N° 6" className="size-14 object-contain" /><div><div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-[#168000]">E.E.S.T. N° 6</div><h1 className="text-lg font-black tracking-tight">Gestión de Horarios</h1><p className="text-xs text-slate-500">Banfield · Lomas de Zamora</p></div></div>
-        <div className="hidden items-center gap-2 lg:flex"><div className="rounded-full border border-[#d7e8c9] bg-[#f4faed] px-3 py-1.5 text-xs font-semibold text-[#267018]"><span className="mr-1.5 inline-block size-2 rounded-full bg-[#1b9a00]" />Sistema operativo</div><Button variant="outline" size="sm" onClick={syncSpreadsheet} disabled={syncing}><Download data-icon="inline-start" />{syncing ? 'Conectando…' : 'Conectar Drive'}</Button><Button variant="outline" size="sm" onClick={() => window.print()}><Printer data-icon="inline-start" />Imprimir</Button></div>
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="Escudo E.E.S.T. N° 6" className="size-14 object-contain" />
+          <div>
+            <div className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-[#168000]">E.E.S.T. N° 6</div>
+            <h1 className="text-lg font-black tracking-tight">Gestión de Horarios y Ausencias</h1>
+            <p className="text-xs text-slate-500">Banfield · Lomas de Zamora</p>
+          </div>
+        </div>
+        <div className="hidden items-center gap-2 lg:flex">
+          <div className="rounded-full border border-[#d7e8c9] bg-[#f4faed] px-3 py-1.5 text-xs font-semibold text-[#267018]"><span className="mr-1.5 inline-block size-2 rounded-full bg-[#1b9a00]" />Sistema operativo</div>
+          <Button variant="outline" size="sm" onClick={syncSpreadsheet} disabled={syncing}><Download data-icon="inline-start" />{syncing ? 'Conectando…' : 'Sincronizar Drive'}</Button>
+          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer data-icon="inline-start" />Imprimir</Button>
+        </div>
       </div>
-      <nav className="mx-auto flex max-w-[1500px] gap-1 overflow-x-auto px-5" aria-label="Secciones"><Tab active={view === 'horario'} onClick={() => setView('horario')} icon={<CalendarDays />} label="Horario por curso" /><Tab active={view === 'docentes'} onClick={() => setView('docentes')} icon={<Users />} label="Buscador por docente" /><Tab active={view === 'paro'} onClick={() => setView('paro')} icon={<ShieldCheck />} label="Relevamiento de paro" /></nav>
+      <nav className="mx-auto flex max-w-[1500px] gap-1 overflow-x-auto px-5" aria-label="Secciones">
+        <Tab active={view === 'horario'} onClick={() => setView('horario')} icon={<CalendarDays />} label="Horario por curso" />
+        <Tab active={view === 'docentes'} onClick={() => setView('docentes')} icon={<Users />} label="Buscador por docente" />
+        <Tab active={view === 'ausencias'} onClick={() => setView('ausencias')} icon={<UserX />} label="Control de ausencias" />
+        <Tab active={view === 'paro'} onClick={() => setView('paro')} icon={<ShieldCheck />} label="Relevamiento de paro" />
+      </nav>
     </header>
-    <main className="mx-auto max-w-[1500px] px-5 py-6"><div className="mb-6 print:hidden"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="mb-1 text-xs font-bold uppercase tracking-[0.15em] text-[#168000]">Panel de control</p><h2 className="text-2xl font-black tracking-tight">{view === 'horario' ? 'Horario semanal' : view === 'docentes' ? 'Buscar docentes' : 'Parte diario de paro'}</h2><p className="mt-1 text-sm text-slate-500">Actualización de jornada · Miércoles 21 de octubre de 2026 · {syncMessage}</p></div><div className="flex gap-2"><Button variant="outline" onClick={() => exportExcel()}><FileSpreadsheet data-icon="inline-start" />Descargar Excel</Button><Button className="bg-[#168000] text-white hover:bg-[#106500]" onClick={save}>{saved ? <Check data-icon="inline-start" /> : <Cloud data-icon="inline-start" />}{saved ? 'Guardado' : dirty ? `Guardar cambios (${dirty})` : 'Guardar cambios'}</Button></div></div></div>
+    
+    <main className="mx-auto max-w-[1500px] px-5 py-6">
+      <div className="mb-6 print:hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="mb-1 text-xs font-bold uppercase tracking-[0.15em] text-[#168000]">Panel de control</p>
+            <h2 className="text-2xl font-black tracking-tight">
+              {view === 'horario' ? 'Horario semanal y grupos' : view === 'docentes' ? 'Buscar docentes' : view === 'ausencias' ? 'Base de datos de ausencias y cobertura' : 'Parte diario de paro'}
+            </h2>
+            <p className="mt-1 text-sm text-slate-500">Actualización activa · Miércoles 21 de octubre de 2026 · {syncMessage}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={exportExcel}><FileSpreadsheet data-icon="inline-start" />Descargar Excel</Button>
+            <Button className="bg-[#168000] text-white hover:bg-[#106500]" onClick={save}>
+              {saved ? <Check data-icon="inline-start" /> : <Cloud data-icon="inline-start" />}
+              {saved ? 'Guardado' : dirty ? `Guardar cambios (${dirty})` : 'Guardar cambios'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
       {view === 'horario' && <ScheduleView course={course} setCourse={setCourse} filter={filter} setFilter={setFilter} selectedDays={selectedDays} setSelectedDays={setSelectedDays} visible={visible} setEditing={setEditing} onAdd={() => setEditing({ id: crypto.randomUUID(), curso: course, turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–09:40', materia: 'Nueva materia', docente: '', situacionRevista: 'Titular' })} />}
-      {view === 'docentes' && <TeacherView query={query} setQuery={setQuery} teachers={teachers} results={searchResults} setEditing={setEditing} exportExcel={exportExcel} />}
-      {view === 'paro' && <StrikeView blocks={dayBlocks} attendance={attendance} setAttendance={setAttendance} absentCount={absentCount} course={course} setCourse={setCourse} />}
+      {view === 'docentes' && <TeacherView query={query} setQuery={setQuery} teachers={teachers} results={searchResults} setEditing={setEditing} />}
+      {view === 'ausencias' && <AusenciasView ausencias={ausencias} setAusencias={setAusencias} blocks={blocks} setDirty={setDirty} />}
+      {view === 'paro' && <StrikeView blocks={dayBlocks} attendance={attendance} setAttendance={setAttendance} />}
     </main>
-    <footer className="mx-auto flex max-w-[1500px] items-center justify-between border-t border-[#d7e8c9] px-5 py-4 text-xs text-slate-500 print:hidden"><span>© 2026 E.E.S.T. N° 6 · Sistema de Gestión Escolar</span><span className="flex items-center gap-1.5"><Zap className="size-3 text-[#79b82a]" />Sincronización local activa</span></footer>
+    
+    <footer className="mx-auto flex max-w-[1500px] items-center justify-between border-t border-[#d7e8c9] px-5 py-4 text-xs text-slate-500 print:hidden">
+      <span>© 2026 E.E.S.T. N° 6 · Sistema de Gestión Escolar</span>
+      <span className="flex items-center gap-1.5"><Zap className="size-3 text-[#79b82a]" />Sincronización en vivo</span>
+    </footer>
     {editing && <Editor block={editing} onClose={() => setEditing(null)} onSave={updateBlock} onDelete={() => { setBlocks((bs) => bs.filter((b) => b.id !== editing.id)); setEditing(null); setDirty((n) => n + 1) }} />}
   </div>
 }
 
-function Tab({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) { return <button onClick={onClick} className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-bold transition ${active ? 'border-[#168000] text-[#168000]' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>{icon}<span>{label}</span></button> }
-function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setSelectedDays, visible, setEditing, onAdd }: any) { const times = ['07:40–09:40', '09:40–09:50', '09:50–11:50', '13:00–15:00', '15:10–17:10', '18:20–20:20']; return <><div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-3 shadow-sm"><label className="flex items-center gap-2 text-sm font-bold">Curso <select value={course} onChange={(e) => setCourse(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold outline-none focus:ring-2 focus:ring-[#9dcc39]">{courses.map((c) => <option key={c}>{c}</option>)}</select></label><div className="flex flex-wrap items-center gap-1 rounded-lg bg-slate-100 p-1">{days.map((day) => <button key={day} onClick={() => setSelectedDays((current: string[]) => current.includes(day) ? current.filter((item) => item !== day) : [...current, day])} className={`rounded-md px-2 py-1.5 text-xs font-bold ${selectedDays.includes(day) ? 'bg-white text-[#168000] shadow-sm' : 'text-slate-400'}`}>{day.slice(0, 3)}</button>)}</div><div className="flex rounded-lg bg-slate-100 p-1">{(['Todos', 'Teoría', 'Taller'] as const).map((x) => <button key={x} onClick={() => setFilter(x)} className={`rounded-md px-3 py-1.5 text-xs font-bold ${filter === x ? 'bg-white text-[#168000] shadow-sm' : 'text-slate-500'}`}>{x === 'Todos' ? 'Todos' : `Solo ${x}`}</button>)}</div><Button className="ml-auto bg-[#168000] text-white hover:bg-[#106500]" onClick={onAdd}><span className="text-lg leading-none">+</span> Agregar bloque</Button></div><div className="mb-4 flex flex-wrap gap-2 text-xs font-semibold"><Legend color="bg-blue-600" label="Titular" /><Legend color="bg-red-600" label="Provisional" /><Legend color="bg-gray-900" label="Titular interino" /><Legend color="bg-green-600" label="Suplente" /><span className="ml-auto text-slate-500">Doble clic para editar · Arrastrá para reordenar</span></div><section className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm"><div className="grid min-w-[900px] grid-cols-[145px_repeat(5,1fr)] border-b bg-[#f4faed] text-xs font-extrabold uppercase tracking-wider text-[#267018]"><div className="p-3">Horario</div>{days.map((d) => <div key={d} className="border-l border-[#d7e8c9] p-3">{d}</div>)}</div>{times.map((time) => <div key={time} className={`grid min-h-[105px] min-w-[900px] grid-cols-[145px_repeat(5,1fr)] border-b border-slate-100 ${time === '09:40–09:50' ? 'bg-[#fff8d8]' : ''}`}><div className="flex flex-col justify-center gap-1 p-3"><span className="font-mono text-sm font-bold text-slate-700">{time}</span>{time === '09:40–09:50' && <span className="w-fit rounded bg-[#ffe878] px-1.5 py-0.5 text-[10px] font-black uppercase text-[#785c00]">Recreo</span>}</div>{days.map((day) => { const b = visible.find((x: Block) => x.dia === day && x.horario === time); return <div key={day} className="border-l border-slate-100 p-2">{b && <BlockCard block={b} onDoubleClick={() => setEditing(b)} />}</div>})}</div>)}</section></> }
-function BlockCard({ block, onDoubleClick }: { block: Block; onDoubleClick: () => void }) { if (block.tipo === 'Recreo') return <button type="button" onDoubleClick={onDoubleClick} onClick={onDoubleClick} className="flex h-full min-h-16 cursor-pointer items-center justify-center rounded-xl border border-[#f1d568] bg-[#fff8d8] text-xs font-bold text-[#866500]">Recreo</button>; return <div draggable onDoubleClick={onDoubleClick} className={`group h-full min-h-16 ${block.grupo ? 'w-1/2 min-w-0' : 'w-full'} cursor-grab rounded-xl border p-3 transition hover:-translate-y-0.5 hover:shadow-md ${block.tipo === 'Teoría' ? 'border-[#9dcc39] bg-[#eaf7d9] text-[#205d19]' : 'border-slate-300 bg-slate-100 text-slate-700'}`}><div className="mb-1 flex items-start justify-between"><p className="text-sm font-extrabold leading-tight">{block.materia}</p><GripVertical className="size-3 opacity-30" /></div><div className="flex flex-col gap-0.5 text-xs font-semibold">{block.docente ? <span className={statusStyle[block.situacionRevista].split(' ')[0]}>{block.docente} · {block.situacionRevista}</span> : <span>Sin docente</span>}{block.suplente && <span className="text-green-700">{block.suplente} · Suplente</span>}</div><div className="mt-2 flex flex-wrap gap-1"><span className="rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-bold">{block.tipo}</span>{block.grupo && <span className="rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-bold">{block.grupo}</span>}</div>{block.suplente && <div className="mt-2 rounded-md border border-green-300 bg-green-50 px-2 py-1 text-[10px] font-bold text-green-700">Suplente: {block.suplente}</div>}</div> }
-function Legend({ color, label }: { color: string; label: string }) { return <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1"><span className={`size-2 rounded-full ${color}`} />{label}</span> }
-function TeacherView({ query, setQuery, teachers, results, setEditing, exportExcel }: any) { const [status, setStatus] = useState('Todos'); const filtered = results.filter((b: Block) => status === 'Todos' || (status === 'Suplentes' ? b.suplente?.toLowerCase().includes(query.toLowerCase()) : b.situacionRevista === status)); const selected = query ? query : 'Todos los docentes'; return <div className="grid gap-4 lg:grid-cols-[340px_1fr]"><aside className="rounded-2xl border border-[#d7e8c9] bg-white p-4 shadow-sm"><p className="mb-2 text-sm font-black">Buscar docente</p><div className="relative"><Search className="absolute left-3 top-2.5 size-4 text-slate-400" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Nombre o apellido..." className="w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-[#9dcc39]" /></div><div className="mt-3 flex flex-col gap-1">{teachers.filter((t: string) => t.toLowerCase().includes(query.toLowerCase())).map((t: string) => <button key={t} onClick={() => setQuery(t)} className="flex items-center justify-between rounded-lg px-2 py-2 text-left text-sm font-semibold hover:bg-[#f4faed]">{t}<ChevronDown className="size-3 -rotate-90 text-slate-400" /></button>)}</div></aside><section className="flex flex-col gap-4"><div className="grid gap-3 sm:grid-cols-4"><Stat label="Bloques semanales" value={filtered.length} icon={<CalendarDays />} /><Stat label="Cursos asignados" value={new Set(filtered.map((b: Block) => b.curso)).size} icon={<Users />} /><Stat label="Como titular" value={filtered.filter((b: Block) => b.docente === selected && b.situacionRevista === 'Titular').length} icon={<ShieldCheck />} /><Stat label="Como suplente" value={filtered.filter((b: Block) => b.suplente === selected).length} icon={<Check />} /></div><div className="rounded-2xl border border-[#d7e8c9] bg-white shadow-sm"><div className="flex flex-wrap items-center justify-between gap-3 border-b p-4"><div><h3 className="font-black">{selected}</h3><p className="text-xs text-slate-500">{filtered.length} bloques encontrados</p></div><div className="flex flex-wrap gap-1">{['Todos', 'Titular', 'Provisional', 'Titular Interino', 'Suplentes'].map((x) => <button key={x} onClick={() => setStatus(x)} className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${status === x ? 'bg-[#168000] text-white' : 'bg-slate-100 text-slate-500'}`}>{x}</button>)}</div></div><div className="overflow-x-auto"><table className="w-full min-w-[720px] text-left text-sm"><thead className="bg-[#f4faed] text-xs uppercase tracking-wider text-[#267018]"><tr><th className="p-3">Curso</th><th>Materia</th><th>Día / horario</th><th>Tipo</th><th>Situación</th><th /></tr></thead><tbody>{filtered.map((b: Block) => <tr key={b.id} onDoubleClick={() => setEditing(b)} className="border-t border-slate-100 hover:bg-slate-50"><td className="p-3 font-bold">{b.curso}</td><td>{b.materia}<div className="text-xs text-slate-500">{b.docente}</div></td><td>{b.dia}<div className="font-mono text-xs text-slate-500">{b.horario}</div></td><td><span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold">{b.tipo}</span></td><td><span className={`rounded-full border px-2 py-1 text-xs font-bold ${statusStyle[b.situacionRevista]}`}>{b.suplente === selected ? 'Suplente' : b.situacionRevista}</span></td><td><Pencil className="size-4 text-slate-400" /></td></tr>)}</tbody></table></div></div></section></div> }
-function Stat({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) { return <div className="rounded-2xl border border-[#d7e8c9] bg-white p-4 shadow-sm"><div className="mb-3 flex items-center justify-between text-[#168000]">{icon}<span className="text-2xl font-black text-slate-900">{value}</span></div><p className="text-xs font-bold text-slate-500">{label}</p></div> }
-function StrikeView({ blocks, attendance, setAttendance, absentCount, course, setCourse }: any) { const [date, setDate] = useState('2026-10-21'); const [selectedCourses, setSelectedCourses] = useState<string[]>(['Todos los cursos']); const visibleBlocks = selectedCourses.includes('Todos los cursos') ? blocks : blocks.filter((b: Block) => selectedCourses.includes(b.curso)); const visibleAbsentCount = visibleBlocks.filter((b: Block) => attendance[b.id] === 'paro').length; const toggleCourse = (value: string) => setSelectedCourses((current) => value === 'Todos los cursos' ? ['Todos los cursos'] : current.includes(value) ? current.filter((item) => item !== value) : [...current.filter((item) => item !== 'Todos los cursos'), value]); const selectedLabel = selectedCourses.includes('Todos los cursos') ? 'Todos los cursos' : selectedCourses.join(', '); return <div className="flex flex-col gap-4"><div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-4 shadow-sm"><label className="text-sm font-bold">Fecha <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="ml-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal" /></label><span className="rounded-full bg-[#f4faed] px-3 py-2 text-sm font-bold text-[#267018]">Miércoles</span><div className="flex min-w-[280px] flex-1 flex-col gap-2"><span className="text-xs font-bold text-slate-500">Cursos a relevar</span><div className="flex flex-wrap gap-1.5"><button type="button" onClick={() => setSelectedCourses(['Todos los cursos'])} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${selectedCourses.includes('Todos los cursos') ? 'border-[#168000] bg-[#eaf7d9] text-[#168000]' : 'border-slate-200 text-slate-500'}`}>Todos</button>{courses.map((c) => <button type="button" key={c} onClick={() => toggleCourse(c)} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${selectedCourses.includes(c) ? 'border-[#168000] bg-[#eaf7d9] text-[#168000]' : 'border-slate-200 text-slate-500'}`}>{c}</button>)}</div><span className="text-[11px] text-slate-400">{selectedLabel || 'Seleccioná al menos un curso'}</span></div><Button variant="outline" className="ml-auto" onClick={() => visibleBlocks.forEach((b: Block) => setAttendance((a: any) => ({ ...a, [b.id]: 'normal' })))}>Marcar todos normal</Button></div><div className="grid gap-3 sm:grid-cols-3"><Stat label="Bloques relevados" value={visibleBlocks.length} icon={<ListFilter />} /><Stat label="Adhesiones al paro" value={visibleAbsentCount} icon={<ShieldCheck />} /><Stat label="% acatamiento" value={blocks.length ? Math.round(absentCount / blocks.length * 100) : 0} icon={<Zap />} /></div><div className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm"><div className="flex items-center justify-between border-b p-4"><div><h3 className="font-black">Parte diario · {date}</h3><p className="text-xs text-slate-500">Registro de asistencia y cobertura docente</p></div><Button variant="outline" size="sm" onClick={() => window.print()}><Printer data-icon="inline-start" />Imprimir parte</Button></div><div className="overflow-x-auto"><table className="w-full min-w-[850px] text-left text-sm"><thead className="bg-[#f4faed] text-xs uppercase tracking-wider text-[#267018]"><tr><th className="p-3">Curso / horario</th><th>Materia</th><th>Docente activo</th><th>Estado</th><th>Observaciones</th></tr></thead><tbody>{visibleBlocks.map((b: Block) => <tr key={b.id} className="border-t border-slate-100"><td className="p-3 font-bold">{b.curso}<div className="font-mono text-xs font-normal text-slate-500">{b.horario}</div></td><td>{b.materia}</td><td><span className={b.suplente ? 'font-bold text-green-700' : 'font-semibold'}>{b.suplente || b.docente}</span>{b.suplente && <div className="text-xs text-slate-500">Titular: {b.docente}</div>}</td><td><div className="flex gap-1"><button onClick={() => setAttendance((a: any) => ({ ...a, [b.id]: 'normal' }))} className={`rounded-full px-2 py-1 text-[11px] font-bold ${attendance[b.id] === 'normal' ? 'bg-green-100 text-green-700 ring-1 ring-green-300' : 'bg-slate-100 text-slate-500'}`}>Normal</button><button onClick={() => setAttendance((a: any) => ({ ...a, [b.id]: 'paro' }))} className={`rounded-full px-2 py-1 text-[11px] font-bold ${attendance[b.id] === 'paro' ? 'bg-red-100 text-red-700 ring-1 ring-red-300' : 'bg-slate-100 text-slate-500'}`}>Paro</button><button onClick={() => setAttendance((a: any) => ({ ...a, [b.id]: 'ausente' }))} className={`rounded-full px-2 py-1 text-[11px] font-bold ${attendance[b.id] === 'ausente' ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-300' : 'bg-slate-100 text-slate-500'}`}>Licencia</button></div></td><td><input placeholder="Agregar observación..." className="w-full min-w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#9dcc39]" /></td></tr>)}</tbody></table></div></div></div> }
-function Editor({ block, onClose, onSave, onDelete }: { block: Block; onClose: () => void; onSave: (b: Block) => void; onDelete: () => void }) { const [draft, setDraft] = useState(block); const set = (key: keyof Block, value: string) => setDraft((d) => ({ ...d, [key]: value })); return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="dialog" aria-modal="true"><div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl"><div className="flex items-center justify-between border-b p-5"><div><p className="text-xs font-bold uppercase tracking-widest text-[#168000]">Edición rápida</p><h2 className="text-xl font-black">{draft.materia}</h2></div><button onClick={onClose} aria-label="Cerrar"><X /></button></div><div className="grid gap-4 p-5 sm:grid-cols-2"><Field label="Materia"><input value={draft.materia} onChange={(e) => set('materia', e.target.value)} /></Field><Field label="Docente"><input value={draft.docente} onChange={(e) => set('docente', e.target.value)} /></Field><Field label="Día"><select value={draft.dia} onChange={(e) => set('dia', e.target.value)}>{days.map((d) => <option key={d}>{d}</option>)}</select></Field><Field label="Horario"><input value={draft.horario} onChange={(e) => set('horario', e.target.value)} /></Field><Field label="Tipo de horario"><select value={draft.tipo} onChange={(e) => { const tipo = e.target.value as Block['tipo']; setDraft((d) => ({ ...d, tipo, turno: tipo === 'Taller' ? 'Taller' : 'Teoría', materia: tipo === 'Recreo' ? 'Recreo' : d.materia })) }}><option>Teoría</option><option>Taller</option><option>Recreo</option></select></Field><Field label="Grupo"><select value={draft.grupo ?? ''} onChange={(e) => set('grupo', e.target.value)}><option value="">Curso completo</option><option>Grupo A</option><option>Grupo B</option><option>Ambos</option></select></Field><Field label="Situación de revista"><select value={draft.situacionRevista} onChange={(e) => set('situacionRevista', e.target.value)}><option>Titular</option><option>Provisional</option><option>Titular Interino</option></select></Field><Field label="Suplente" wide><input value={draft.suplente ?? ''} onChange={(e) => set('suplente', e.target.value)} placeholder="Opcional" /></Field></div><div className="flex items-center justify-between border-t bg-slate-50 p-4"><Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={onDelete}>Eliminar bloque</Button><div className="flex gap-2"><Button variant="outline" onClick={onClose}>Cancelar</Button><Button className="bg-[#168000] text-white hover:bg-[#106500]" onClick={() => onSave(draft)}>Guardar bloque</Button></div></div></div></div> }
-function Field({ label, children, wide }: { label: string; children: React.ReactNode; wide?: boolean }) { return <label className={`flex flex-col gap-1.5 text-xs font-bold text-slate-600 ${wide ? 'sm:col-span-2' : ''}`}>{label}{children}</label> }
+function Tab({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) { 
+  return <button onClick={onClick} className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-bold transition ${active ? 'border-[#168000] text-[#168000]' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>{icon}<span>{label}</span></button> 
+}
+
+function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setSelectedDays, visible, setEditing, onAdd }: any) { 
+  const times = ['07:40–09:40', '09:40–09:50', '09:50–11:50', '13:00–15:00', '15:10–17:10', '18:20–20:20']
+  return <>
+    <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-3 shadow-sm">
+      <label className="flex items-center gap-2 text-sm font-bold">Curso 
+        <select value={course} onChange={(e) => setCourse(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold outline-none focus:ring-2 focus:ring-[#9dcc39]">
+          {courses.map((c) => <option key={c}>{c}</option>)}
+        </select>
+      </label>
+      <div className="flex flex-wrap items-center gap-1 rounded-lg bg-slate-100 p-1">
+        {days.map((day) => <button key={day} onClick={() => setSelectedDays((current: string[]) => current.includes(day) ? current.filter((item) => item !== day) : [...current, day])} className={`rounded-md px-2 py-1.5 text-xs font-bold ${selectedDays.includes(day) ? 'bg-white text-[#168000] shadow-sm' : 'text-slate-400'}`}>{day.slice(0, 3)}</button>)}
+      </div>
+      <div className="flex rounded-lg bg-slate-100 p-1">
+        {(['Todos', 'Teoría', 'Taller'] as const).map((x) => <button key={x} onClick={() => setFilter(x)} className={`rounded-md px-3 py-1.5 text-xs font-bold ${filter === x ? 'bg-white text-[#168000] shadow-sm' : 'text-slate-500'}`}>{x === 'Todos' ? 'Todos' : `Solo ${x}`}</button>)}
+      </div>
+      <Button className="ml-auto bg-[#168000] text-white hover:bg-[#106500]" onClick={onAdd}><span className="text-lg leading-none">+</span> Agregar bloque</Button>
+    </div>
+    
+    <div className="mb-4 flex flex-wrap gap-2 text-xs font-semibold">
+      <Legend color="bg-blue-600" label="Titular" />
+      <Legend color="bg-red-600" label="Provisional" />
+      <Legend color="bg-gray-900" label="Titular interino" />
+      <Legend color="bg-green-600" label="Suplente" />
+      <span className="ml-auto text-slate-500">Ambos grupos (A y B) se visualizan en simultáneo · Doble clic para editar</span>
+    </div>
+
+    <section className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
+      <div className="grid min-w-[900px] grid-cols-[145px_repeat(5,1fr)] border-b bg-[#f4faed] text-xs font-extrabold uppercase tracking-wider text-[#267018]">
+        <div className="p-3">Horario</div>
+        {days.map((d) => <div key={d} className="border-l border-[#d7e8c9] p-3">{d}</div>)}
+      </div>
+      {times.map((time) => (
+        <div key={time} className={`grid min-h-[110px] min-w-[900px] grid-cols-[145px_repeat(5,1fr)] border-b border-slate-100 ${time === '09:40–09:50' ? 'bg-[#fff8d8]' : ''}`}>
+          <div className="flex flex-col justify-center gap-1 p-3">
+            <span className="font-mono text-sm font-bold text-slate-700">{time}</span>
+            {time === '09:40–09:50' && <span className="w-fit rounded bg-[#ffe878] px-1.5 py-0.5 text-[10px] font-black uppercase text-[#785c00]">Recreo</span>}
+          </div>
+          {days.map((day) => { 
+            const cellBlocks = visible.filter((x: Block) => x.dia === day && x.horario === time)
+            return (
+              <div key={day} className="border-l border-slate-100 p-2 flex flex-col gap-2">
+                {cellBlocks.map((b: Block) => (
+                  <BlockCard key={b.id} block={b} onDoubleClick={() => setEditing(b)} />
+                ))}
+              </div>
+            )
+          })}
+        </div>
+      ))}
+    </section>
+  </> 
+}
+
+function BlockCard({ block, onDoubleClick }: { block: Block; onDoubleClick: () => void }) { 
+  if (block.tipo === 'Recreo') return <button type="button" onDoubleClick={onDoubleClick} onClick={onDoubleClick} className="flex h-full min-h-16 w-full cursor-pointer items-center justify-center rounded-xl border border-[#f1d568] bg-[#fff8d8] text-xs font-bold text-[#866500]">Recreo</button>
+  
+  const statusColorClass = block.situacionRevista === 'Titular' ? 'text-blue-700' : block.situacionRevista === 'Provisional' ? 'text-red-700' : 'text-gray-950'
+
+  return <div onDoubleClick={onDoubleClick} className={`group cursor-pointer rounded-xl border p-2.5 transition hover:-translate-y-0.5 hover:shadow-md ${block.tipo === 'Teoría' ? 'border-[#9dcc39] bg-[#eaf7d9] text-[#205d19]' : 'border-slate-300 bg-slate-50 text-slate-700'}`}>
+    <div className="mb-1 flex items-start justify-between">
+      <p className="text-xs font-extrabold leading-tight">{block.materia}</p>
+      {block.grupo && <span className="rounded bg-[#168000] px-1.5 py-0.5 text-[10px] font-black text-white">{block.grupo}</span>}
+    </div>
+    <div className="flex flex-col gap-0.5 text-[11px] font-semibold">
+      {block.docente ? <span className={`${statusColorClass} font-bold`}>{block.docente} · {block.situacionRevista}</span> : <span className="text-slate-400">Sin docente</span>}
+    </div>
+    {block.suplente && (
+      <div className="mt-1.5 rounded-md border border-green-300 bg-green-50 px-1.5 py-1 text-[10px] font-bold text-green-800">
+        Suplente: {block.suplente}
+      </div>
+    )}
+  </div> 
+}
+
+function Legend({ color, label }: { color: string; label: string }) { 
+  return <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2 py-1"><span className={`size-2 rounded-full ${color}`} />{label}</span> 
+}
+
+function TeacherView({ query, setQuery, teachers, results, setEditing }: any) { 
+  const [status, setStatus] = useState('Todos')
+  const filtered = results.filter((b: Block) => status === 'Todos' || (status === 'Suplentes' ? b.suplente?.toLowerCase().includes(query.toLowerCase()) : b.situacionRevista === status))
+  const selected = query ? query : 'Todos los docentes' 
+  return <div className="grid gap-4 lg:grid-cols-[340px_1fr]">
+    <aside className="rounded-2xl border border-[#d7e8c9] bg-white p-4 shadow-sm">
+      <p className="mb-2 text-sm font-black">Buscar docente</p>
+      <div className="relative">
+        <Search className="absolute left-3 top-2.5 size-4 text-slate-400" />
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Nombre o apellido..." className="w-full rounded-xl border border-slate-200 py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-[#9dcc39]" />
+      </div>
+      <div className="mt-3 flex flex-col gap-1 max-h-[400px] overflow-y-auto">
+        {teachers.filter((t: string) => t.toLowerCase().includes(query.toLowerCase())).map((t: string) => (
+          <button key={t} onClick={() => setQuery(t)} className="flex items-center justify-between rounded-lg px-2 py-2 text-left text-sm font-semibold hover:bg-[#f4faed]">{t}<ChevronDown className="size-3 -rotate-90 text-slate-400" /></button>
+        ))}
+      </div>
+    </aside>
+    <section className="flex flex-col gap-4">
+      <div className="grid gap-3 sm:grid-cols-4">
+        <Stat label="Bloques semanales" value={filtered.length} icon={<CalendarDays />} />
+        <Stat label="Cursos asignados" value={new Set(filtered.map((b: Block) => b.curso)).size} icon={<Users />} />
+        <Stat label="Como titular" value={filtered.filter((b: Block) => b.docente === selected && b.situacionRevista === 'Titular').length} icon={<ShieldCheck />} />
+        <Stat label="Como suplente" value={filtered.filter((b: Block) => b.suplente === selected).length} icon={<Check />} />
+      </div>
+      <div className="rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
+          <div>
+            <h3 className="font-black">{selected}</h3>
+            <p className="text-xs text-slate-500">{filtered.length} bloques encontrados</p>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {['Todos', 'Titular', 'Provisional', 'Titular Interino', 'Suplentes'].map((x) => (
+              <button key={x} onClick={() => setStatus(x)} className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${status === x ? 'bg-[#168000] text-white' : 'bg-slate-100 text-slate-500'}`}>{x}</button>
+            ))}
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="bg-[#f4faed] text-xs uppercase tracking-wider text-[#267018]">
+              <tr><th className="p-3">Curso</th><th>Materia</th><th>Día / horario</th><th>Tipo</th><th>Situación</th><th /></tr>
+            </thead>
+            <tbody>
+              {filtered.map((b: Block) => (
+                <tr key={b.id} onDoubleClick={() => setEditing(b)} className="border-t border-slate-100 hover:bg-slate-50 cursor-pointer">
+                  <td className="p-3 font-bold">{b.curso} {b.grupo && <span className="text-xs font-normal text-slate-500">({b.grupo})</span>}</td>
+                  <td>{b.materia}<div className="text-xs text-slate-500">{b.docente}</div></td>
+                  <td>{b.dia}<div className="font-mono text-xs text-slate-500">{b.horario}</div></td>
+                  <td><span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold">{b.tipo}</span></td>
+                  <td><span className={`rounded-full border px-2 py-1 text-xs font-bold ${statusStyle[b.situacionRevista]}`}>{b.suplente === selected ? 'Suplente' : b.situacionRevista}</span></td>
+                  <td><Pencil className="size-4 text-slate-400" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div> 
+}
+
+function AusenciasView({ ausencias, setAusencias, blocks, setDirty }: any) {
+  const [cursoFiltro, setCursoFiltro] = useState('Todos')
+  const [docenteInput, setDocenteInput] = useState('')
+  const [materiaInput, setMateriaInput] = useState('')
+  const [fechaInput, setFechaInput] = useState(new Date().toISOString().split('T')[0])
+  const [estadoCob, setEstadoCob] = useState<CoberturaStatus>('Sin cubrir')
+  const [docenteDecreto, setDocenteDecreto] = useState('')
+
+  const totalAusencias = ausencias.length
+  const cubiertas = ausencias.filter((a: AusenciaRecord) => a.estadoCobertura === 'Cubierto por Decreto').length
+  const sinCubrir = totalAusencias - cubiertas
+
+  function registrarAusencia(e: React.FormEvent) {
+    e.preventDefault()
+    if (!docenteInput || !cursoFiltro) return
+    const nueva: AusenciaRecord = {
+      id: `AUS-${Date.now().toString().slice(-4)}`,
+      curso: cursoFiltro === 'Todos' ? '1°1°' : cursoFiltro,
+      mes: 'Octubre',
+      fecha: fechaInput,
+      materia: materiaInput || 'Materia general',
+      docenteAusente: docenteInput.toUpperCase(),
+      estadoCobertura: estadoCob,
+      docenteDecreto: estadoCob === 'Cubierto por Decreto' ? (docenteDecreto.toUpperCase() || 'CUBIERTO') : 'Sin cubrir'
+    }
+    setAusencias([nueva, ...ausencias])
+    setDirty((n: number) => n + 1)
+    setDocenteInput('')
+    setDocenteDecreto('')
+  }
+
+  return <div className="flex flex-col gap-6">
+    <div className="grid gap-3 sm:grid-cols-3">
+      <Stat label="Total de ausencias registradas" value={totalAusencias} icon={<UserX />} />
+      <Stat label="Cubiertas por decreto" value={cubiertas} icon={<ShieldCheck />} />
+      <Stat label="Sin cubrir" value={sinCubrir} icon={<ShieldAlert />} />
+    </div>
+
+    {/* Formulario de registro rápido */}
+    <div className="rounded-2xl border border-[#d7e8c9] bg-white p-5 shadow-sm">
+      <h3 className="mb-4 font-black text-lg">Registrar nueva ausencia docente</h3>
+      <form onSubmit={registrarAusencia} className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Curso
+          <select value={cursoFiltro} onChange={(e) => setCursoFiltro(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            {courses.map((c) => <option key={c}>{c}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Fecha
+          <input type="date" value={fechaInput} onChange={(e) => setFechaInput(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Docente ausente
+          <input value={docenteInput} onChange={(e) => setDocenteInput(e.target.value)} placeholder="Ej. BOGARIN" className="rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase" required />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Materia
+          <input value={materiaInput} onChange={(e) => setMateriaInput(e.target.value)} placeholder="Ej. Matemática" className="rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Estado de Cobertura
+          <select value={estadoCob} onChange={(e) => setEstadoCob(e.target.value as CoberturaStatus)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">
+            <option value="Sin cubrir">Sin cubrir</option>
+            <option value="Cubierto por Decreto">Cubierto por Decreto</option>
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Profesor que cubre / Obs.
+          <input value={docenteDecreto} onChange={(e) => setDocenteDecreto(e.target.value)} placeholder="Ej. ASPREA" disabled={estadoCob === 'Sin cubrir'} className="rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase disabled:bg-slate-100" />
+        </label>
+        <div className="sm:col-span-3 lg:col-span-6 flex justify-end">
+          <Button type="submit" className="bg-[#168000] text-white hover:bg-[#106500]">Registrar ausencia</Button>
+        </div>
+      </form>
+    </div>
+
+    {/* Historial de Ausencias */}
+    <div className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
+      <div className="border-b p-4">
+        <h3 className="font-black text-lg">Historial de ausencias y cobertura</h3>
+        <p className="text-xs text-slate-500">Listado completo de inasistencias registradas y su estado administrativo</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[850px] text-left text-sm">
+          <thead className="bg-[#f4faed] text-xs uppercase tracking-wider text-[#267018]">
+            <tr><th className="p-3">Curso</th><th>Fecha</th><th>Docente ausente</th><th>Materia</th><th>Estado</th><th>Cubre por decreto / Observación</th></tr>
+          </thead>
+          <tbody>
+            {ausencias.map((a: AusenciaRecord) => (
+              <tr key={a.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="p-3 font-bold">{a.curso}</td>
+                <td>{a.fecha}</td>
+                <td className="font-bold text-slate-800">{a.docenteAusente}</td>
+                <td>{a.materia}</td>
+                <td>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${a.estadoCobertura === 'Cubierto por Decreto' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {a.estadoCobertura}
+                  </span>
+                </td>
+                <td className="font-semibold text-slate-700">{a.docenteDecreto}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+}
+
+function Stat({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) { 
+  return <div className="rounded-2xl border border-[#d7e8c9] bg-white p-4 shadow-sm"><div className="mb-3 flex items-center justify-between text-[#168000]">{icon}<span className="text-2xl font-black text-slate-900">{value}</span></div><p className="text-xs font-bold text-slate-500">{label}</p></div> 
+}
+
+function StrikeView({ blocks, attendance, setAttendance }: any) { 
+  const [date, setDate] = useState('2026-10-21')
+  const [selectedCourses, setSelectedCourses] = useState<string[]>(['Todos los cursos']) 
+  const visibleBlocks = selectedCourses.includes('Todos los cursos') ? blocks : blocks.filter((b: Block) => selectedCourses.includes(b.curso)) 
+  const visibleAbsentCount = visibleBlocks.filter((b: Block) => attendance[b.id] === 'paro').length 
+  const toggleCourse = (value: string) => setSelectedCourses((current) => value === 'Todos los cursos' ? ['Todos los cursos'] : current.includes(value) ? current.filter((item) => item !== value) : [...current.filter((item) => item !== 'Todos los cursos'), value]) 
+  const selectedLabel = selectedCourses.includes('Todos los cursos') ? 'Todos los cursos' : selectedCourses.join(', ') 
+  
+  return <div className="flex flex-col gap-4">
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-4 shadow-sm">
+      <label className="text-sm font-bold">Fecha <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="ml-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal" /></label>
+      <span className="rounded-full bg-[#f4faed] px-3 py-2 text-sm font-bold text-[#267018]">Miércoles</span>
+      <div className="flex min-w-[280px] flex-1 flex-col gap-2">
+        <span className="text-xs font-bold text-slate-500">Cursos a relevar</span>
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button" onClick={() => setSelectedCourses(['Todos los cursos'])} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${selectedCourses.includes('Todos los cursos') ? 'border-[#168000] bg-[#eaf7d9] text-[#168000]' : 'border-slate-200 text-slate-500'}`}>Todos</button>
+          {courses.map((c) => <button type="button" key={c} onClick={() => toggleCourse(c)} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${selectedCourses.includes(c) ? 'border-[#168000] bg-[#eaf7d9] text-[#168000]' : 'border-slate-200 text-slate-500'}`}>{c}</button>)}
+        </div>
+        <span className="text-[11px] text-slate-400">{selectedLabel || 'Seleccioná al menos un curso'}</span>
+      </div>
+      <Button variant="outline" className="ml-auto" onClick={() => visibleBlocks.forEach((b: Block) => setAttendance((a: any) => ({ ...a, [b.id]: 'normal' })))}>Marcar todos normal</Button>
+    </div>
+    
+    <div className="grid gap-3 sm:grid-cols-3">
+      <Stat label="Bloques relevados" value={visibleBlocks.length} icon={<ListFilter />} />
+      <Stat label="Adhesiones al paro" value={visibleAbsentCount} icon={<ShieldCheck />} />
+      <Stat label="% acatamiento" value={visibleBlocks.length ? Math.round(visibleAbsentCount / visibleBlocks.length * 100) : 0} icon={<Zap />} />
+    </div>
+
+    <div className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b p-4">
+        <div>
+          <h3 className="font-black">Parte diario · {date}</h3>
+          <p className="text-xs text-slate-500">Registro de asistencia y cobertura docente</p>
+        </div>
+        <Button variant="outline" size="sm" onClick={() => window.print()}><Printer data-icon="inline-start" />Imprimir parte</Button>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[850px] text-left text-sm">
+          <thead className="bg-[#f4faed] text-xs uppercase tracking-wider text-[#267018]">
+            <tr><th className="p-3">Curso / horario</th><th>Materia</th><th>Docente activo</th><th>Estado</th><th>Observaciones</th></tr>
+          </thead>
+          <tbody>
+            {visibleBlocks.map((b: Block) => (
+              <tr key={b.id} className="border-t border-slate-100">
+                <td className="p-3 font-bold">{b.curso} {b.grupo && <span className="text-xs font-normal text-slate-500">({b.grupo})</span>}<div className="font-mono text-xs font-normal text-slate-500">{b.horario}</div></td>
+                <td>{b.materia}</td>
+                <td>
+                  <span className={b.suplente ? 'font-bold text-green-700' : 'font-semibold'}>{b.suplente || b.docente}</span>
+                  {b.suplente && <div className="text-xs text-slate-500">Titular: {b.docente}</div>}
+                </td>
+                <td>
+                  <div className="flex gap-1">
+                    <button onClick={() => setAttendance((a: any) => ({ ...a, [b.id]: 'normal' }))} className={`rounded-full px-2 py-1 text-[11px] font-bold ${attendance[b.id] === 'normal' ? 'bg-green-100 text-green-700 ring-1 ring-green-300' : 'bg-slate-100 text-slate-500'}`}>Normal</button>
+                    <button onClick={() => setAttendance((a: any) => ({ ...a, [b.id]: 'paro' }))} className={`rounded-full px-2 py-1 text-[11px] font-bold ${attendance[b.id] === 'paro' ? 'bg-red-100 text-red-700 ring-1 ring-red-300' : 'bg-slate-100 text-slate-500'}`}>Paro</button>
+                    <button onClick={() => setAttendance((a: any) => ({ ...a, [b.id]: 'ausente' }))} className={`rounded-full px-2 py-1 text-[11px] font-bold ${attendance[b.id] === 'ausente' ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-300' : 'bg-slate-100 text-slate-500'}`}>Licencia</button>
+                  </div>
+                </td>
+                <td><input placeholder="Observación..." className="w-full min-w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#9dcc39]" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div> 
+}
+
+function Editor({ block, onClose, onSave, onDelete }: { block: Block; onClose: () => void; onSave: (b: Block) => void; onDelete: () => void }) { 
+  const [draft, setDraft] = useState(block) 
+  const set = (key: keyof Block, value: string) => setDraft((d) => ({ ...d, [key]: value })) 
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="dialog" aria-modal="true">
+    <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+      <div className="flex items-center justify-between border-b p-5">
+        <div><p className="text-xs font-bold uppercase tracking-widest text-[#168000]">Edición rápida</p><h2 className="text-xl font-black">{draft.materia}</h2></div>
+        <button onClick={onClose} aria-label="Cerrar"><X /></button>
+      </div>
+      <div className="grid gap-4 p-5 sm:grid-cols-2">
+        <Field label="Materia"><input value={draft.materia} onChange={(e) => set('materia', e.target.value)} /></Field>
+        <Field label="Docente"><input value={draft.docente} onChange={(e) => set('docente', e.target.value)} /></Field>
+        <Field label="Día"><select value={draft.dia} onChange={(e) => set('dia', e.target.value)}>{days.map((d) => <option key={d}>{d}</option>)}</select></Field>
+        <Field label="Horario"><input value={draft.horario} onChange={(e) => set('horario', e.target.value)} /></Field>
+        <Field label="Tipo de horario"><select value={draft.tipo} onChange={(e) => { const tipo = e.target.value as Block['tipo']; setDraft((d) => ({ ...d, tipo, turno: tipo === 'Taller' ? 'Taller' : 'Teoría', materia: tipo === 'Recreo' ? 'Recreo' : d.materia })) }}><option>Teoría</option><option>Taller</option><option>Recreo</option></select></Field>
+        <Field label="Grupo"><select value={draft.grupo ?? ''} onChange={(e) => set('grupo', e.target.value)}><option value="">Curso completo</option><option>Grupo A</option><option>Grupo B</option><option>Ambos</option></select></Field>
+        <Field label="Situación de revista"><select value={draft.situacionRevista} onChange={(e) => set('situacionRevista', e.target.value)}><option>Titular</option><option>Provisional</option><option>Titular Interino</option></select></Field>
+        <Field label="Suplente" wide><input value={draft.suplente ?? ''} onChange={(e) => set('suplente', e.target.value)} placeholder="Opcional" /></Field>
+      </div>
+      <div className="flex items-center justify-between border-t bg-slate-50 p-4">
+        <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={onDelete}>Eliminar bloque</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button className="bg-[#168000] text-white hover:bg-[#106500]" onClick={() => onSave(draft)}>Guardar bloque</Button>
+        </div>
+      </div>
+    </div>
+  </div> 
+}
+
+function Field({ label, children, wide }: { label: string; children: React.ReactNode; wide?: boolean }) { 
+  return <label className={`flex flex-col gap-1.5 text-xs font-bold text-slate-600 ${wide ? 'sm:col-span-2' : ''}`}>{label}{children}</label> 
+}
