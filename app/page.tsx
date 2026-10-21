@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { Button } from '@/components/ui/button'
-import { CalendarDays, Check, ChevronDown, Cloud, Download, FileSpreadsheet, GripVertical, ListFilter, Pencil, Printer, Search, ShieldAlert, ShieldCheck, UserX, Users, X, Zap } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, Cloud, Download, FileSpreadsheet, ListFilter, Pencil, Printer, Search, ShieldAlert, ShieldCheck, UserX, Users, X, Zap } from 'lucide-react'
 
 type View = 'horario' | 'docentes' | 'paro' | 'ausencias'
 type Status = 'Titular' | 'Provisional' | 'Titular Interino'
@@ -42,9 +42,9 @@ const courses = ['1°1°', '1°2°', '1°3°', '1°4°', '1°5°', '1°6°', '2�
 
 const seed: Block[] = [
   { id: '1', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–09:40', materia: 'Matemática', docente: 'María González', situacionRevista: 'Titular' },
-  { id: '2', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Martes', horario: '09:50–11:50', materia: 'Prácticas del Lenguaje', docente: 'Carlos Ramírez', situacionRevista: 'Provisional' },
-  { id: '3', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', horario: '13:00–15:00', materia: 'Taller de Tecnología', docente: 'Juan Passalacqua', situacionRevista: 'Titular Interino', suplente: 'Lucía Fernández', grupo: 'Grupo A' },
-  { id: '4', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', horario: '13:00–15:00', materia: 'Taller de Tecnología', docente: 'Pedro Gómez', situacionRevista: 'Titular', grupo: 'Grupo B' },
+  { id: '2', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Martes', horario: '11:50–12:50', materia: 'Cs. Sociales', docente: 'BOGARIN', situacionRevista: 'Provisional' },
+  { id: '3', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', horario: '13:00–15:00', materia: 'Sistemas Tecnológicos', docente: 'RODRIGUEZ, DANIEL', situacionRevista: 'Provisional', grupo: 'Grupo A' },
+  { id: '4', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', horario: '13:00–15:00', materia: 'Procedim. Técnicos', docente: 'FERNANDEZ OSVALDO', situacionRevista: 'Provisional', grupo: 'Grupo B' },
   { id: '5', curso: '1°1°', turno: 'Teoría', tipo: 'Recreo', dia: 'Lunes', horario: '09:40–09:50', materia: 'Recreo', docente: '', situacionRevista: 'Titular' },
 ]
 
@@ -175,7 +175,7 @@ export default function Page() {
 
       {view === 'horario' && <ScheduleView course={course} setCourse={setCourse} filter={filter} setFilter={setFilter} selectedDays={selectedDays} setSelectedDays={setSelectedDays} visible={visible} setEditing={setEditing} onAdd={() => setEditing({ id: crypto.randomUUID(), curso: course, turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–09:40', materia: 'Nueva materia', docente: '', situacionRevista: 'Titular' })} />}
       {view === 'docentes' && <TeacherView query={query} setQuery={setQuery} teachers={teachers} results={searchResults} setEditing={setEditing} />}
-      {view === 'ausencias' && <AusenciasView ausencias={ausencias} setAusencias={setAusencias} blocks={blocks} setDirty={setDirty} />}
+      {view === 'ausencias' && <AusenciasView ausencias={ausencias} setAusencias={setAusencias} setDirty={setDirty} />}
       {view === 'paro' && <StrikeView blocks={dayBlocks} attendance={attendance} setAttendance={setAttendance} />}
     </main>
     
@@ -192,7 +192,7 @@ function Tab({ active, onClick, icon, label }: { active: boolean; onClick: () =>
 }
 
 function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setSelectedDays, visible, setEditing, onAdd }: any) { 
-  const times = ['07:40–09:40', '09:40–09:50', '09:50–11:50', '13:00–15:00', '15:10–17:10', '18:20–20:20']
+  const times = ['07:40–09:40', '09:40–09:50', '09:50–11:50', '11:50–12:50', '13:00–15:00', '15:10–17:10', '18:20–20:20']
   return <>
     <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-3 shadow-sm">
       <label className="flex items-center gap-2 text-sm font-bold">Curso 
@@ -214,7 +214,7 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
       <Legend color="bg-red-600" label="Provisional" />
       <Legend color="bg-gray-900" label="Titular interino" />
       <Legend color="bg-green-600" label="Suplente" />
-      <span className="ml-auto text-slate-500">Ambos grupos (A y B) se visualizan en simultáneo · Doble clic para editar</span>
+      <span className="ml-auto text-slate-500">Talleres y grupos se muestran compactos lado a lado · Doble clic para editar</span>
     </div>
 
     <section className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
@@ -231,10 +231,12 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
           {days.map((day) => { 
             const cellBlocks = visible.filter((x: Block) => x.dia === day && x.horario === time)
             return (
-              <div key={day} className="border-l border-slate-100 p-2 flex flex-col gap-2">
-                {cellBlocks.map((b: Block) => (
-                  <BlockCard key={b.id} block={b} onDoubleClick={() => setEditing(b)} />
-                ))}
+              <div key={day} className="border-l border-slate-100 p-2">
+                <div className={`grid gap-1.5 h-full ${cellBlocks.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {cellBlocks.map((b: Block) => (
+                    <BlockCard key={b.id} block={b} onDoubleClick={() => setEditing(b)} />
+                  ))}
+                </div>
               </div>
             )
           })}
@@ -249,17 +251,19 @@ function BlockCard({ block, onDoubleClick }: { block: Block; onDoubleClick: () =
   
   const statusColorClass = block.situacionRevista === 'Titular' ? 'text-blue-700' : block.situacionRevista === 'Provisional' ? 'text-red-700' : 'text-gray-950'
 
-  return <div onDoubleClick={onDoubleClick} className={`group cursor-pointer rounded-xl border p-2.5 transition hover:-translate-y-0.5 hover:shadow-md ${block.tipo === 'Teoría' ? 'border-[#9dcc39] bg-[#eaf7d9] text-[#205d19]' : 'border-slate-300 bg-slate-50 text-slate-700'}`}>
-    <div className="mb-1 flex items-start justify-between">
-      <p className="text-xs font-extrabold leading-tight">{block.materia}</p>
-      {block.grupo && <span className="rounded bg-[#168000] px-1.5 py-0.5 text-[10px] font-black text-white">{block.grupo}</span>}
-    </div>
-    <div className="flex flex-col gap-0.5 text-[11px] font-semibold">
-      {block.docente ? <span className={`${statusColorClass} font-bold`}>{block.docente} · {block.situacionRevista}</span> : <span className="text-slate-400">Sin docente</span>}
+  return <div onDoubleClick={onDoubleClick} className={`group cursor-pointer rounded-xl border p-2 transition hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between ${block.tipo === 'Teoría' ? 'border-[#9dcc39] bg-[#eaf7d9] text-[#205d19]' : 'border-slate-300 bg-slate-50 text-slate-700'}`}>
+    <div>
+      <div className="mb-0.5 flex items-start justify-between gap-1">
+        <p className="text-[11px] font-extrabold leading-tight">{block.materia}</p>
+        {block.grupo && <span className="rounded bg-[#168000] px-1 py-0.5 text-[9px] font-black text-white shrink-0">{block.grupo}</span>}
+      </div>
+      <div className="flex flex-col text-[10px] font-semibold">
+        {block.docente ? <span className={`${statusColorClass} font-bold`}>{block.docente}</span> : <span className="text-slate-400">Sin docente</span>}
+      </div>
     </div>
     {block.suplente && (
-      <div className="mt-1.5 rounded-md border border-green-300 bg-green-50 px-1.5 py-1 text-[10px] font-bold text-green-800">
-        Suplente: {block.suplente}
+      <div className="mt-1 rounded border border-green-300 bg-green-50 px-1 py-0.5 text-[9px] font-bold text-green-800">
+        Sup: {block.suplente}
       </div>
     )}
   </div> 
@@ -329,16 +333,32 @@ function TeacherView({ query, setQuery, teachers, results, setEditing }: any) {
   </div> 
 }
 
-function AusenciasView({ ausencias, setAusencias, blocks, setDirty }: any) {
+function AusenciasView({ ausencias, setAusencias, setDirty }: any) {
   const [cursoFiltro, setCursoFiltro] = useState('Todos')
+  const [docenteFiltro, setDocenteFiltro] = useState('')
+  const [modoFecha, setModoFecha] = useState<'todo' | 'rango'>('todo')
+  const [fechaDesde, setFechaDesde] = useState('2026-04-01')
+  const [fechaHasta, setFechaHasta] = useState('2026-12-31')
+
   const [docenteInput, setDocenteInput] = useState('')
   const [materiaInput, setMateriaInput] = useState('')
   const [fechaInput, setFechaInput] = useState(new Date().toISOString().split('T')[0])
   const [estadoCob, setEstadoCob] = useState<CoberturaStatus>('Sin cubrir')
   const [docenteDecreto, setDocenteDecreto] = useState('')
 
-  const totalAusencias = ausencias.length
-  const cubiertas = ausencias.filter((a: AusenciaRecord) => a.estadoCobertura === 'Cubierto por Decreto').length
+  const ausenciasFiltradas = ausencias.filter((a: AusenciaRecord) => {
+    const matchCurso = cursoFiltro === 'Todos' || a.curso === cursoFiltro
+    const matchDocente = !docenteFiltro || a.docenteAusente.toLowerCase().includes(docenteFiltro.toLowerCase()) || a.docenteDecreto.toLowerCase().includes(docenteFiltro.toLowerCase())
+    
+    let matchFecha = true
+    if (modoFecha === 'rango' && a.fecha && a.fecha.match(/^\d{4}-\d{2}-\d{2}$/)) {
+      matchFecha = a.fecha >= fechaDesde && a.fecha <= fechaHasta
+    }
+    return matchCurso && matchDocente && matchFecha
+  })
+
+  const totalAusencias = ausenciasFiltradas.length
+  const cubiertas = ausenciasFiltradas.filter((a: AusenciaRecord) => a.estadoCobertura === 'Cubierto por Decreto').length
   const sinCubrir = totalAusencias - cubiertas
 
   function registrarAusencia(e: React.FormEvent) {
@@ -362,9 +382,39 @@ function AusenciasView({ ausencias, setAusencias, blocks, setDirty }: any) {
 
   return <div className="flex flex-col gap-6">
     <div className="grid gap-3 sm:grid-cols-3">
-      <Stat label="Total de ausencias registradas" value={totalAusencias} icon={<UserX />} />
+      <Stat label="Ausencias en la selección" value={totalAusencias} icon={<UserX />} />
       <Stat label="Cubiertas por decreto" value={cubiertas} icon={<ShieldCheck />} />
       <Stat label="Sin cubrir" value={sinCubrir} icon={<ShieldAlert />} />
+    </div>
+
+    {/* Filtros de Búsqueda Avanzada */}
+    <div className="rounded-2xl border border-[#d7e8c9] bg-white p-5 shadow-sm">
+      <h3 className="mb-3 font-black text-base flex items-center gap-2"><Search className="size-4 text-[#168000]" /> Filtrar y buscar ausencias</h3>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Filtrar por Curso
+          <select value={cursoFiltro} onChange={(e) => setCursoFiltro(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">
+            <option value="Todos">Todos los cursos</option>
+            {courses.map((c) => <option key={c}>{c}</option>)}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Buscar por Docente (Ausente / Cubre)
+          <input value={docenteFiltro} onChange={(e) => setDocenteFiltro(e.target.value)} placeholder="Ej. BOGARIN, ASPREA..." className="rounded-lg border border-slate-200 px-3 py-2 text-sm uppercase" />
+        </label>
+        <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Periodo de fechas
+          <select value={modoFecha} onChange={(e) => setModoFecha(e.target.value as any)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">
+            <option value="todo">Todo el historial</option>
+            <option value="rango">Desde / Hasta específico</option>
+          </select>
+        </label>
+        {modoFecha === 'rango' ? (
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-[11px] font-bold text-slate-600">Desde <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)} className="rounded-lg border border-slate-200 px-2 py-2 text-xs" /></label>
+            <label className="flex flex-col gap-1 text-[11px] font-bold text-slate-600">Hasta <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)} className="rounded-lg border border-slate-200 px-2 py-2 text-xs" /></label>
+          </div>
+        ) : (
+          <div className="flex items-end pb-1"><span className="text-xs text-slate-400 font-medium">Mostrando registros históricos completos sin límite de fecha.</span></div>
+        )}
+      </div>
     </div>
 
     {/* Formulario de registro rápido */}
@@ -372,7 +422,7 @@ function AusenciasView({ ausencias, setAusencias, blocks, setDirty }: any) {
       <h3 className="mb-4 font-black text-lg">Registrar nueva ausencia docente</h3>
       <form onSubmit={registrarAusencia} className="grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Curso
-          <select value={cursoFiltro} onChange={(e) => setCursoFiltro(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+          <select value={cursoFiltro === 'Todos' ? '1°1°' : cursoFiltro} onChange={(e) => setCursoFiltro(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
             {courses.map((c) => <option key={c}>{c}</option>)}
           </select>
         </label>
@@ -400,11 +450,13 @@ function AusenciasView({ ausencias, setAusencias, blocks, setDirty }: any) {
       </form>
     </div>
 
-    {/* Historial de Ausencias */}
+    {/* Historial de Ausencias Filtrado */}
     <div className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
-      <div className="border-b p-4">
-        <h3 className="font-black text-lg">Historial de ausencias y cobertura</h3>
-        <p className="text-xs text-slate-500">Listado completo de inasistencias registradas y su estado administrativo</p>
+      <div className="border-b p-4 flex items-center justify-between">
+        <div>
+          <h3 className="font-black text-lg">Historial de ausencias y cobertura</h3>
+          <p className="text-xs text-slate-500">Mostrando {ausenciasFiltradas.length} registros según los filtros seleccionados</p>
+        </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[850px] text-left text-sm">
@@ -412,20 +464,24 @@ function AusenciasView({ ausencias, setAusencias, blocks, setDirty }: any) {
             <tr><th className="p-3">Curso</th><th>Fecha</th><th>Docente ausente</th><th>Materia</th><th>Estado</th><th>Cubre por decreto / Observación</th></tr>
           </thead>
           <tbody>
-            {ausencias.map((a: AusenciaRecord) => (
-              <tr key={a.id} className="border-t border-slate-100 hover:bg-slate-50">
-                <td className="p-3 font-bold">{a.curso}</td>
-                <td>{a.fecha}</td>
-                <td className="font-bold text-slate-800">{a.docenteAusente}</td>
-                <td>{a.materia}</td>
-                <td>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${a.estadoCobertura === 'Cubierto por Decreto' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {a.estadoCobertura}
-                  </span>
-                </td>
-                <td className="font-semibold text-slate-700">{a.docenteDecreto}</td>
-              </tr>
-            ))}
+            {ausenciasFiltradas.length === 0 ? (
+              <tr><td colSpan={6} className="p-6 text-center text-slate-400 font-semibold">No se encontraron ausencias con los filtros seleccionados.</td></tr>
+            ) : (
+              ausenciasFiltradas.map((a: AusenciaRecord) => (
+                <tr key={a.id} className="border-t border-slate-100 hover:bg-slate-50">
+                  <td className="p-3 font-bold">{a.curso}</td>
+                  <td>{a.fecha}</td>
+                  <td className="font-bold text-slate-800">{a.docenteAusente}</td>
+                  <td>{a.materia}</td>
+                  <td>
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${a.estadoCobertura === 'Cubierto por Decreto' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                      {a.estadoCobertura}
+                    </span>
+                  </td>
+                  <td className="font-semibold text-slate-700">{a.docenteDecreto}</td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -525,7 +581,7 @@ function Editor({ block, onClose, onSave, onDelete }: { block: Block; onClose: (
         <Field label="Suplente" wide><input value={draft.suplente ?? ''} onChange={(e) => set('suplente', e.target.value)} placeholder="Opcional" /></Field>
       </div>
       <div className="flex items-center justify-between border-t bg-slate-50 p-4">
-        <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={onDelete}>Eliminar bloque</Button>
+        <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={onDelete}>Eliminar bloque horaria</Button>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button className="bg-[#168000] text-white hover:bg-[#106500]" onClick={() => onSave(draft)}>Guardar bloque</Button>
