@@ -36,7 +36,7 @@ type AusenciaRecord = {
 }
 
 const logo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-M35qmFS9dpbN14cGWOmnvOvidznySB.png'
-const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbw-euMAeEFpzTZNBAtYb-MBcotBFBKXXusLiludf6KaXrue_e7ygSgbC3vl9fJTZ16B/exec'
+const spreadsheetApi = 'https://script.google.com/macros/s/AKfycby2hODGIztulG57sdt8KzLroLTxXt3zjj2Xf7FdCDCFYinOtyVW7eKfIN_Dm-rUl7zp/exec'
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
 const courses = ['1°1°', '1°2°', '1°3°', '1°4°', '1°5°', '1°6°', '2°1°', '2°2°', '2°3°', '3°1°', '3°2°', '4°1°', '4°2°', '5°1°', '5°2°', '5°3°', '5°6°', '6°1°', '6°2°', '6°3°', '6°6°', '7°1°', '7°2°']
 
