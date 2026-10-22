@@ -38,14 +38,12 @@ type AusenciaRecord = {
 const logo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-M35qmFS9dpbN14cGWOmnvOvidznySB.png'
 const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbzL_4FweTgmOyI-tPE7uTzUlrNqcGNjW7J4OyXBl6AROApJnFAOPwQSES5DYjaarP1R/exec'
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
-const courses = ['1°1°', '1°2°', '1°3°', '1°4°', '1°5°', '1°6°', '2°1°', '2°2°', '2°3°', '3°1°', '3°2°', '4°1°', '4°2°', '5°1°', '5°2°', '5°3°', '5°6°', '6°1°', '6°2°', '6°3°', '6°6°', '7°1°', '7°2°']
 
 const seed: Block[] = [
   { id: '1', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–08:40', materia: 'Cs. Naturales', docente: 'MARTIN', situacionRevista: 'Titular' },
   { id: '2', curso: '1°1°', turno: 'Teoría', tipo: 'Recreo', dia: 'Lunes', horario: '09:40–09:50', materia: 'Recreo', docente: '', situacionRevista: 'Titular' },
   { id: '3', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Jueves', horario: '11:50–12:50', materia: 'Cs. Sociales', docente: 'BOGARIN', situacionRevista: 'Provisional' },
   { id: '4', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', horario: '13:00–15:00', materia: 'Lenguajes Tecnológicos', docente: 'OSORIO MARCELA', situacionRevista: 'Provisional', grupo: 'Grupo A' },
-  { id: '5', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', horario: '13:00–15:00', materia: 'Lenguajes Tecnológicos', docente: 'MAZEI', situacionRevista: 'Provisional', grupo: 'Grupo B' },
 ]
 
 const seedAusencias: AusenciaRecord[] = [
@@ -71,6 +69,24 @@ export default function Page() {
   const [syncMessage, setSyncMessage] = useState('Conectando con Google Drive…')
 
   useEffect(() => { syncSpreadsheet() }, [])
+
+  // Lista dinámica de todos los cursos existentes en los bloques (ordenados naturalmente)
+  const courses = useMemo(() => {
+    const list = Array.from(new Set(blocks.map((b) => b.curso).filter(Boolean)))
+    return list.sort((a, b) => {
+      const numA = parseInt(a) || 0
+      const numB = parseInt(b) || 0
+      if (numA !== numB) return numA - numB
+      return a.localeCompare(b)
+    })
+  }, [blocks])
+
+  // Asegurar que el curso seleccionado sea válido si cambian los datos
+  useEffect(() => {
+    if (courses.length > 0 && !courses.includes(course)) {
+      setCourse(courses[0])
+    }
+  }, [courses, course])
 
   const courseTimes = useMemo(() => {
     const courseBlocks = blocks.filter((b) => b.curso === course)
@@ -137,7 +153,7 @@ export default function Page() {
         setAusencias(normAus)
       }
 
-      setSyncMessage(`Conectado exitosamente`)
+      setSyncMessage(`Conectado exitosamente (${courses.length} cursos cargados)`)
     } catch { 
       setSyncMessage('No se pudo conectar · usando datos locales') 
     } finally { 
@@ -213,17 +229,17 @@ export default function Page() {
         </div>
       </div>
 
-      {view === 'horario' && <ScheduleView course={course} setCourse={setCourse} filter={filter} setFilter={setFilter} selectedDays={selectedDays} setSelectedDays={setSelectedDays} visible={visible} blocks={blocks} setBlocks={setBlocks} courseTimes={courseTimes} setEditing={setEditing} onAdd={() => setEditing({ id: crypto.randomUUID(), curso: course, turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–08:40', materia: 'Nueva materia', docente: '', situacionRevista: 'Titular' })} onManageRecreos={() => setShowRecreosModal(true)} />}
+      {view === 'horario' && <ScheduleView course={course} setCourse={setCourse} filter={filter} setFilter={setFilter} selectedDays={selectedDays} setSelectedDays={setSelectedDays} visible={visible} blocks={blocks} setBlocks={setBlocks} courseTimes={courseTimes} courses={courses} setEditing={setEditing} onAdd={() => setEditing({ id: crypto.randomUUID(), curso: course, turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–08:40', materia: 'Nueva materia', docente: '', situacionRevista: 'Titular' })} onManageRecreos={() => setShowRecreosModal(true)} />}
       {view === 'docentes' && <TeacherView query={query} setQuery={setQuery} teachers={teachers} results={searchResults} setEditing={setEditing} />}
-      {view === 'ausencias' && <AusenciasView ausencias={ausencias} setAusencias={setAusencias} setDirty={setDirty} />}
-      {view === 'paro' && <StrikeView blocks={dayBlocks} attendance={attendance} setAttendance={setAttendance} />}
+      {view === 'ausencias' && <AusenciasView ausencias={ausencias} setAusencias={setAusencias} setDirty={setDirty} courses={courses} />}
+      {view === 'paro' && <StrikeView blocks={dayBlocks} attendance={attendance} setAttendance={setAttendance} courses={courses} />}
     </main>
     
     <footer className="mx-auto flex max-w-[1500px] flex-col sm:flex-row items-center justify-between gap-2 border-t border-[#d7e8c9] px-4 sm:px-5 py-4 text-xs text-slate-500 print:hidden text-center sm:text-left">
       <span>© 2026 E.E.S.T. N° 6 · Sistema de Gestión Escolar</span>
       <span className="flex items-center gap-1.5"><Zap className="size-3 text-[#79b82a]" />Sincronización en vivo con Drive</span>
     </footer>
-    {editing && <Editor block={editing} onClose={() => setEditing(null)} onSave={updateBlock} onDelete={() => { setBlocks((bs) => bs.filter((b) => b.id !== editing.id)); setEditing(null); setDirty((n) => n + 1) }} />}
+    {editing && <Editor block={editing} courses={courses} onClose={() => setEditing(null)} onSave={updateBlock} onDelete={() => { setBlocks((bs) => bs.filter((b) => b.id !== editing.id)); setEditing(null); setDirty((n) => n + 1) }} />}
     {showRecreosModal && <RecreosModal course={course} blocks={blocks} setBlocks={setBlocks} onClose={() => setShowRecreosModal(false)} setDirty={setDirty} />}
   </div>
 }
@@ -232,12 +248,12 @@ function Tab({ active, onClick, icon, label }: { active: boolean; onClick: () =>
   return <button onClick={onClick} className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-bold transition whitespace-nowrap ${active ? 'border-[#168000] text-[#168000]' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>{icon}<span>{label}</span></button> 
 }
 
-function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setSelectedDays, visible, blocks, setBlocks, courseTimes, setEditing, onAdd, onManageRecreos }: any) { 
+function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setSelectedDays, visible, blocks, setBlocks, courseTimes, courses, setEditing, onAdd, onManageRecreos }: any) { 
   return <>
     <div className="mb-4 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-3 shadow-sm">
       <label className="flex items-center justify-between sm:justify-start gap-2 text-sm font-bold">Curso 
         <select value={course} onChange={(e) => setCourse(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold outline-none focus:ring-2 focus:ring-[#9dcc39]">
-          {courses.map((c) => <option key={c}>{c}</option>)}
+          {courses.map((c: string) => <option key={c}>{c}</option>)}
         </select>
       </label>
       <div className="flex flex-wrap items-center gap-1 rounded-lg bg-slate-100 p-1 justify-center">
@@ -461,7 +477,7 @@ function TeacherView({ query, setQuery, teachers, results, setEditing }: any) {
   </div> 
 }
 
-function AusenciasView({ ausencias, setAusencias, setDirty }: any) {
+function AusenciasView({ ausencias, setAusencias, setDirty, courses }: any) {
   const [cursoFiltro, setCursoFiltro] = useState('Todos')
   const [docenteFiltro, setDocenteFiltro] = useState('')
   const [modoFecha, setModoFecha] = useState<'todo' | 'rango'>('todo')
@@ -494,7 +510,7 @@ function AusenciasView({ ausencias, setAusencias, setDirty }: any) {
     if (!docenteInput || !cursoFiltro) return
     const nueva: AusenciaRecord = {
       id: `AUS-${Date.now().toString().slice(-4)}`,
-      curso: cursoFiltro === 'Todos' ? '1°1°' : cursoFiltro,
+      curso: cursoFiltro === 'Todos' ? (courses[0] || '1°1°') : cursoFiltro,
       mes: 'Octubre',
       fecha: fechaInput,
       materia: materiaInput || 'Materia general',
@@ -522,7 +538,7 @@ function AusenciasView({ ausencias, setAusencias, setDirty }: any) {
         <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Filtrar por Curso
           <select value={cursoFiltro} onChange={(e) => setCursoFiltro(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold">
             <option value="Todos">Todos los cursos</option>
-            {courses.map((c) => <option key={c}>{c}</option>)}
+            {courses.map((c: string) => <option key={c}>{c}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Buscar por Docente (Ausente / Cubre)
@@ -550,8 +566,8 @@ function AusenciasView({ ausencias, setAusencias, setDirty }: any) {
       <h3 className="mb-4 font-black text-lg">Registrar nueva ausencia docente</h3>
       <form onSubmit={registrarAusencia} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Curso
-          <select value={cursoFiltro === 'Todos' ? '1°1°' : cursoFiltro} onChange={(e) => setCursoFiltro(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-            {courses.map((c) => <option key={c}>{c}</option>)}
+          <select value={cursoFiltro === 'Todos' ? (courses[0] || '1°1°') : cursoFiltro} onChange={(e) => setCursoFiltro(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm">
+            {courses.map((c: string) => <option key={c}>{c}</option>)}
           </select>
         </label>
         <label className="flex flex-col gap-1 text-xs font-bold text-slate-600">Fecha
@@ -621,7 +637,7 @@ function Stat({ label, value, icon }: { label: string; value: number; icon: Reac
   return <div className="rounded-2xl border border-[#d7e8c9] bg-white p-3 sm:p-4 shadow-sm"><div className="mb-2 sm:mb-3 flex items-center justify-between text-[#168000]">{icon}<span className="text-xl sm:text-2xl font-black text-slate-900">{value}</span></div><p className="text-[11px] sm:text-xs font-bold text-slate-500">{label}</p></div> 
 }
 
-function StrikeView({ blocks, attendance, setAttendance }: any) { 
+function StrikeView({ blocks, attendance, setAttendance, courses }: any) { 
   const [date, setDate] = useState('2026-10-21')
   const [selectedCourses, setSelectedCourses] = useState<string[]>(['Todos los cursos']) 
   const visibleBlocks = selectedCourses.includes('Todos los cursos') ? blocks : blocks.filter((b: Block) => selectedCourses.includes(b.curso)) 
@@ -637,7 +653,7 @@ function StrikeView({ blocks, attendance, setAttendance }: any) {
         <span className="text-xs font-bold text-slate-500">Cursos a relevar</span>
         <div className="flex flex-wrap gap-1.5">
           <button type="button" onClick={() => setSelectedCourses(['Todos los cursos'])} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${selectedCourses.includes('Todos los cursos') ? 'border-[#168000] bg-[#eaf7d9] text-[#168000]' : 'border-slate-200 text-slate-500'}`}>Todos</button>
-          {courses.map((c) => <button type="button" key={c} onClick={() => toggleCourse(c)} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${selectedCourses.includes(c) ? 'border-[#168000] bg-[#eaf7d9] text-[#168000]' : 'border-slate-200 text-slate-500'}`}>{c}</button>)}
+          {courses.map((c: string) => <button type="button" key={c} onClick={() => toggleCourse(c)} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${selectedCourses.includes(c) ? 'border-[#168000] bg-[#eaf7d9] text-[#168000]' : 'border-slate-200 text-slate-500'}`}>{c}</button>)}
         </div>
         <span className="text-[11px] text-slate-400">{selectedLabel || 'Seleccioná al menos un curso'}</span>
       </div>
@@ -689,7 +705,7 @@ function StrikeView({ blocks, attendance, setAttendance }: any) {
   </div> 
 }
 
-function Editor({ block, onClose, onSave, onDelete }: { block: Block; onClose: () => void; onSave: (b: Block) => void; onDelete: () => void }) { 
+function Editor({ block, courses, onClose, onSave, onDelete }: { block: Block; courses: string[]; onClose: () => void; onSave: (b: Block) => void; onDelete: () => void }) { 
   const [draft, setDraft] = useState(block) 
   const set = (key: keyof Block, value: string) => setDraft((d) => ({ ...d, [key]: value })) 
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="dialog" aria-modal="true">
@@ -699,6 +715,7 @@ function Editor({ block, onClose, onSave, onDelete }: { block: Block; onClose: (
         <button onClick={onClose} aria-label="Cerrar"><X /></button>
       </div>
       <div className="grid gap-4 p-5 sm:grid-cols-2">
+        <Field label="Curso"><select value={draft.curso} onChange={(e) => set('curso', e.target.value)}>{courses.map((c: string) => <option key={c}>{c}</option>)}</select></Field>
         <Field label="Materia"><input value={draft.materia} onChange={(e) => set('materia', e.target.value)} /></Field>
         <Field label="Docente"><input value={draft.docente} onChange={(e) => set('docente', e.target.value)} /></Field>
         <Field label="Día"><select value={draft.dia} onChange={(e) => set('dia', e.target.value)}>{days.map((d) => <option key={d}>{d}</option>)}</select></Field>
