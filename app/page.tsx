@@ -51,6 +51,7 @@ type ParoRecord = {
   estadoParo: Attendance;
   observaciones?: string;
   tipoPersonal: 'docente' | 'preceptor';
+  grupo?: string;
 }
 
 const logo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-M35qmFS9dpbN14cGWOmnvOvidznySB.png'
@@ -183,7 +184,8 @@ export default function Page() {
           docente: String(read(p, 'docente', 'Docente') || ''),
           estadoParo: (read(p, 'estadoParo', 'Estado Paro') || 'normal') as Attendance,
           observaciones: String(read(p, 'observaciones', 'Observaciones') || ''),
-          tipoPersonal: (read(p, 'tipoPersonal', 'Tipo Personal') || 'docente') as 'docente' | 'preceptor'
+          tipoPersonal: (read(p, 'tipoPersonal', 'Tipo Personal') || 'docente') as 'docente' | 'preceptor',
+          grupo: String(read(p, 'grupo', 'Grupo') || '')
         }))
         setParoHistorial(normParo)
       }
@@ -727,7 +729,8 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
   }, [preceptores, cursoFiltro, esFinDeSemana])
 
   function cambiarEstadoDocente(b: any, estado: Attendance, obs?: string) {
-    const existingIndex = paroHistorial.findIndex((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia && p.tipoPersonal === 'docente')
+    const grupoKey = b.grupo || ''
+    const existingIndex = paroHistorial.findIndex((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia && (p.grupo || '') === grupoKey && p.tipoPersonal === 'docente')
     const nuevoRegistro: ParoRecord = {
       id: existingIndex >= 0 ? paroHistorial[existingIndex].id : `PARO-D-${Date.now().toString().slice(-4)}`,
       fecha: date,
@@ -737,7 +740,8 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
       docente: b.suplente || b.docente,
       estadoParo: estado,
       observaciones: obs !== undefined ? obs : (existingIndex >= 0 ? paroHistorial[existingIndex].observaciones : ''),
-      tipoPersonal: 'docente'
+      tipoPersonal: 'docente',
+      grupo: grupoKey
     }
 
     if (existingIndex >= 0) {
@@ -776,7 +780,8 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
   }
 
   const totalDocentesParo = bloquesDelDia.filter((b: Block) => {
-    const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia && p.tipoPersonal === 'docente')
+    const grupoKey = b.grupo || ''
+    const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia && (p.grupo || '') === grupoKey && p.tipoPersonal === 'docente')
     return reg?.estadoParo === 'paro'
   }).length
 
@@ -861,12 +866,13 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
               <tr><td colSpan={5} className="p-6 text-center text-slate-400 font-semibold">No hay docentes programados para este día con los filtros seleccionados.</td></tr>
             ) : (
               bloquesDelDia.map((b: Block) => {
-                const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia && p.tipoPersonal === 'docente')
+                const grupoKey = b.grupo || ''
+                const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia && (p.grupo || '') === grupoKey && p.tipoPersonal === 'docente')
                 const estadoActual = reg?.estadoParo || 'normal'
                 const obsActual = reg?.observaciones || ''
 
-                return <tr key={b.id + b.curso} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="p-3 font-bold">{b.curso} {b.grupo && <span className="text-xs font-normal text-slate-500">({b.grupo})</span>}<div className="font-mono text-xs font-normal text-slate-500">{b.horario}</div></td>
+                return <tr key={b.id + b.curso + grupoKey} className="border-t border-slate-100 hover:bg-slate-50">
+                  <td className="p-3 font-bold">{b.curso} {b.grupo && <span className="rounded bg-[#168000] px-1.5 py-0.5 text-[9px] font-black text-white ml-1">{b.grupo}</span>}<div className="font-mono text-xs font-normal text-slate-500">{b.horario}</div></td>
                   <td>{b.materia}</td>
                   <td>
                     <span className={b.suplente ? 'font-bold text-green-700' : 'font-semibold'}>{b.suplente || b.docente}</span>
