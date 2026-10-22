@@ -50,10 +50,11 @@ type ParoRecord = {
   docente: string;
   estadoParo: Attendance;
   observaciones?: string;
+  tipoPersonal: 'docente' | 'preceptor';
 }
 
 const logo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-M35qmFS9dpbN14cGWOmnvOvidznySB.png'
-const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbyzwuM5bDtNhaBZUHsgN7BzxcMwPEBqORz_PkGuzYpo7Y2jYclWMUMnqXGXN7WPZDJ7/exec'
+const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbx2kx8trSdHewDl9dLo6hE7t_uVJRsA0updvfFchEf9nA_SGL31hgl8Om8605qVzUjn/exec'
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
 const courses = ['1°1°', '1°2°', '1°3°', '1°4°', '1°5°', '1°6°', '2°1°', '2°2°', '2°3°', '2°4°', '2°5°', '2°6°', '3°1°', '3°2°', '3°3°', '3°4°', '3°5°', '3°6°', '4°1°', '4°2°', '4°3°', '4°4°', '4°5°', '5°1°', '5°2°', '5°3°', '5°6°', '5°7°', '6°1°', '6°2°', '6°3°', '6°6°', '6°7°', '7°1°', '7°2°', '7°3°', '7°6°', '7°7°']
 
@@ -173,7 +174,18 @@ export default function Page() {
       }
 
       if (payload.paroHistorial && Array.isArray(payload.paroHistorial)) {
-        setParoHistorial(payload.paroHistorial)
+        const normParo = payload.paroHistorial.map((p: any, index: number) => ({
+          id: String(read(p, 'id', 'ID') || `PARO-${index + 1}`),
+          fecha: String(read(p, 'fecha', 'Fecha') || new Date().toISOString().split('T')[0]),
+          curso: String(read(p, 'curso', 'Curso') || ''),
+          horario: String(read(p, 'horario', 'Horario') || ''),
+          materia: String(read(p, 'materia', 'Materia') || ''),
+          docente: String(read(p, 'docente', 'Docente') || ''),
+          estadoParo: (read(p, 'estadoParo', 'Estado Paro') || 'normal') as Attendance,
+          observaciones: String(read(p, 'observaciones', 'Observaciones') || ''),
+          tipoPersonal: (read(p, 'tipoPersonal', 'Tipo Personal') || 'docente') as 'docente' | 'preceptor'
+        }))
+        setParoHistorial(normParo)
       }
 
       setSyncMessage(`Conectado exitosamente (${courses.length} cursos cargados)`)
@@ -697,7 +709,6 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
   const nombreDiaSemana = dayNames[dateObj.getDay()] || 'Lunes'
   const esFinDeSemana = nombreDiaSemana === 'Domingo' || nombreDiaSemana === 'Sábado'
 
-  // Filtrar estrictamente solo los docentes que tienen clase ESE DÍA DE LA SEMANA
   const bloquesDelDia = useMemo(() => {
     if (esFinDeSemana) return []
     let list = (dayBlocks || []).filter((b: Block) => b && b.dia === nombreDiaSemana && b.tipo !== 'Recreo')
@@ -707,17 +718,26 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
     return list
   }, [dayBlocks, date, cursoFiltro, nombreDiaSemana, esFinDeSemana])
 
-  function cambiarEstado(b: any, estado: Attendance, obs?: string) {
-    const existingIndex = paroHistorial.findIndex((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia)
+  const preceptoresDelDia = useMemo(() => {
+    if (esFinDeSemana) return []
+    if (cursoFiltro !== 'Todos') {
+      return (preceptores || []).filter((p: PreceptorAssignment) => p.curso === cursoFiltro)
+    }
+    return preceptores || []
+  }, [preceptores, cursoFiltro, esFinDeSemana])
+
+  function cambiarEstadoDocente(b: any, estado: Attendance, obs?: string) {
+    const existingIndex = paroHistorial.findIndex((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia && p.tipoPersonal === 'docente')
     const nuevoRegistro: ParoRecord = {
-      id: existingIndex >= 0 ? paroHistorial[existingIndex].id : `PARO-${Date.now().toString().slice(-4)}`,
+      id: existingIndex >= 0 ? paroHistorial[existingIndex].id : `PARO-D-${Date.now().toString().slice(-4)}`,
       fecha: date,
       curso: b.curso,
       horario: b.horario,
       materia: b.materia,
       docente: b.suplente || b.docente,
       estadoParo: estado,
-      observaciones: obs !== undefined ? obs : (existingIndex >= 0 ? paroHistorial[existingIndex].observaciones : '')
+      observaciones: obs !== undefined ? obs : (existingIndex >= 0 ? paroHistorial[existingIndex].observaciones : ''),
+      tipoPersonal: 'docente'
     }
 
     if (existingIndex >= 0) {
@@ -730,13 +750,40 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
     setDirty((n: number) => n + 1)
   }
 
-  const totalRelevados = bloquesDelDia.length
-  const totalParo = bloquesDelDia.filter((b: Block) => {
-    const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia)
+  function cambiarEstadoPreceptor(p: PreceptorAssignment, estado: Attendance, obs?: string) {
+    const existingIndex = paroHistorial.findIndex((item: ParoRecord) => item.fecha === date && item.curso === p.curso && item.tipoPersonal === 'preceptor')
+    const nombrePreceptor = p.preceptorTitular || 'Preceptor sin nombre'
+    const nuevoRegistro: ParoRecord = {
+      id: existingIndex >= 0 ? paroHistorial[existingIndex].id : `PARO-P-${Date.now().toString().slice(-4)}`,
+      fecha: date,
+      curso: p.curso,
+      horario: 'Jornada Completa',
+      materia: 'Preceptoría',
+      docente: nombrePreceptor,
+      estadoParo: estado,
+      observaciones: obs !== undefined ? obs : (existingIndex >= 0 ? paroHistorial[existingIndex].observaciones : ''),
+      tipoPersonal: 'preceptor'
+    }
+
+    if (existingIndex >= 0) {
+      const copy = [...paroHistorial]
+      copy[existingIndex] = nuevoRegistro
+      setParoHistorial(copy)
+    } else {
+      setParoHistorial([nuevoRegistro, ...paroHistorial])
+    }
+    setDirty((n: number) => n + 1)
+  }
+
+  const totalDocentesParo = bloquesDelDia.filter((b: Block) => {
+    const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia && p.tipoPersonal === 'docente')
     return reg?.estadoParo === 'paro'
   }).length
 
-  const preceptorActual = cursoFiltro !== 'Todos' ? preceptores?.find((p: PreceptorAssignment) => p.curso === cursoFiltro) : null
+  const totalPreceptoresParo = preceptoresDelDia.filter((p: PreceptorAssignment) => {
+    const reg = paroHistorial.find((item: ParoRecord) => item.fecha === date && item.curso === p.curso && item.tipoPersonal === 'preceptor')
+    return reg?.estadoParo === 'paro'
+  }).length
 
   return <div className="flex flex-col gap-6">
     <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-4 shadow-sm">
@@ -749,25 +796,56 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
         </select>
       </label>
     </div>
-
-    {preceptorActual && (
-      <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-4 flex flex-wrap items-center justify-between gap-2 text-sm font-bold text-blue-900">
-        <div>Preceptor Titular: <span className="font-normal">{preceptorActual.preceptorTitular || 'No asignado'}</span></div>
-        {preceptorActual.preceptorSuplente && <div>Preceptor Suplente: <span className="font-normal">{preceptorActual.preceptorSuplente}</span></div>}
-      </div>
-    )}
     
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <Stat label={`Docentes con clase este ${nombreDiaSemana}`} value={totalRelevados} icon={<ListFilter />} />
-      <Stat label="Adhesiones al paro registradas" value={totalParo} icon={<ShieldCheck />} />
-      <Stat label="% acatamiento del día" value={totalRelevados ? Math.round(totalParo / totalRelevados * 100) : 0} icon={<Zap />} />
+      <Stat label={`Docentes con clase este ${nombreDiaSemana}`} value={bloquesDelDia.length} icon={<ListFilter />} />
+      <Stat label="Paros de Docentes" value={totalDocentesParo} icon={<ShieldCheck />} />
+      <Stat label="Paros de Preceptores" value={totalPreceptoresParo} icon={<UserCheck />} />
     </div>
 
+    {/* Sección de Preceptores */}
+    {!esFinDeSemana && preceptoresDelDia.length > 0 && (
+      <div className="overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-sm">
+        <div className="border-b bg-blue-50/50 p-4">
+          <h3 className="font-black text-lg text-blue-900">Control de Preceptores · {date}</h3>
+          <p className="text-xs text-slate-500">Registro de asistencia y adhesión al paro para el cuerpo de preceptores</p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[750px] text-left text-sm">
+            <thead className="bg-blue-50/80 text-xs uppercase tracking-wider text-blue-900">
+              <tr><th className="p-3">Curso / División</th><th>Preceptor Titular</th><th>Estado (¿Hizo Paro?)</th><th>Observaciones</th></tr>
+            </thead>
+            <tbody>
+              {preceptoresDelDia.map((p: PreceptorAssignment) => {
+                const reg = paroHistorial.find((item: ParoRecord) => item.fecha === date && item.curso === p.curso && item.tipoPersonal === 'preceptor')
+                const estadoActual = reg?.estadoParo || 'normal'
+                const obsActual = reg?.observaciones || ''
+
+                return <tr key={p.curso} className="border-t border-slate-100 hover:bg-slate-50">
+                  <td className="p-3 font-bold text-[#168000]">{p.curso}</td>
+                  <td className="font-semibold text-slate-800">{p.preceptorTitular || <span className="text-slate-400 font-normal">Sin asignar</span>} {p.preceptorSuplente && <span className="block text-xs font-normal text-slate-500">Suplente: {p.preceptorSuplente}</span>}</td>
+                  <td>
+                    <div className="flex gap-1">
+                      <button type="button" onClick={() => cambiarEstadoPreceptor(p, 'normal')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'normal' ? 'bg-green-100 text-green-700 ring-1 ring-green-400' : 'bg-slate-100 text-slate-500'}`}>Normal</button>
+                      <button type="button" onClick={() => cambiarEstadoPreceptor(p, 'paro')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'paro' ? 'bg-red-100 text-red-700 ring-1 ring-red-400' : 'bg-slate-100 text-slate-500'}`}>Hizo Paro</button>
+                      <button type="button" onClick={() => cambiarEstadoPreceptor(p, 'licencia')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'licencia' ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-400' : 'bg-slate-100 text-slate-500'}`}>Licencia</button>
+                    </div>
+                  </td>
+                  <td><input value={obsActual} onChange={(e) => cambiarEstadoPreceptor(p, estadoActual, e.target.value)} placeholder="Observación preceptor..." className="w-full min-w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400" /></td>
+                </tr>
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+
+    {/* Sección de Docentes */}
     <div className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
       <div className="flex items-center justify-between border-b p-4">
         <div>
-          <h3 className="font-black text-lg">Registro de Paro · {date} ({nombreDiaSemana})</h3>
-          <p className="text-xs text-slate-500">Mostrando únicamente los docentes que tienen clases programadas en este día</p>
+          <h3 className="font-black text-lg">Registro de Paro Docente · {date} ({nombreDiaSemana})</h3>
+          <p className="text-xs text-slate-500">Docentes programados con clase en este día</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => window.print()}><Printer data-icon="inline-start" />Imprimir parte</Button>
       </div>
@@ -783,7 +861,7 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
               <tr><td colSpan={5} className="p-6 text-center text-slate-400 font-semibold">No hay docentes programados para este día con los filtros seleccionados.</td></tr>
             ) : (
               bloquesDelDia.map((b: Block) => {
-                const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia)
+                const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia && p.tipoPersonal === 'docente')
                 const estadoActual = reg?.estadoParo || 'normal'
                 const obsActual = reg?.observaciones || ''
 
@@ -796,12 +874,12 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
                   </td>
                   <td>
                     <div className="flex gap-1">
-                      <button type="button" onClick={() => cambiarEstado(b, 'normal')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'normal' ? 'bg-green-100 text-green-700 ring-1 ring-green-400' : 'bg-slate-100 text-slate-500'}`}>Normal</button>
-                      <button type="button" onClick={() => cambiarEstado(b, 'paro')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'paro' ? 'bg-red-100 text-red-700 ring-1 ring-red-400' : 'bg-slate-100 text-slate-500'}`}>Hizo Paro</button>
-                      <button type="button" onClick={() => cambiarEstado(b, 'licencia')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'licencia' ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-400' : 'bg-slate-100 text-slate-500'}`}>Licencia</button>
+                      <button type="button" onClick={() => cambiarEstadoDocente(b, 'normal')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'normal' ? 'bg-green-100 text-green-700 ring-1 ring-green-400' : 'bg-slate-100 text-slate-500'}`}>Normal</button>
+                      <button type="button" onClick={() => cambiarEstadoDocente(b, 'paro')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'paro' ? 'bg-red-100 text-red-700 ring-1 ring-red-400' : 'bg-slate-100 text-slate-500'}`}>Hizo Paro</button>
+                      <button type="button" onClick={() => cambiarEstadoDocente(b, 'licencia')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'licencia' ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-400' : 'bg-slate-100 text-slate-500'}`}>Licencia</button>
                     </div>
                   </td>
-                  <td><input value={obsActual} onChange={(e) => cambiarEstado(b, estadoActual, e.target.value)} placeholder="Observación..." className="w-full min-w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#9dcc39]" /></td>
+                  <td><input value={obsActual} onChange={(e) => cambiarEstadoDocente(b, estadoActual, e.target.value)} placeholder="Observación..." className="w-full min-w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#9dcc39]" /></td>
                 </tr>
               })
             )}
