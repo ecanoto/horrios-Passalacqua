@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { Button } from '@/components/ui/button'
-import { CalendarDays, Check, ChevronDown, Cloud, Download, FileSpreadsheet, ListFilter, Pencil, Printer, Search, ShieldAlert, ShieldCheck, UserX, Users, X, Zap } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, Cloud, Download, FileSpreadsheet, ListFilter, Pencil, Printer, Search, ShieldAlert, ShieldCheck, UserX, Users, X, Zap, Clock, Trash2, Plus } from 'lucide-react'
 
 type View = 'horario' | 'docentes' | 'paro' | 'ausencias'
 type Status = 'Titular' | 'Provisional' | 'Titular Interino'
@@ -64,6 +64,7 @@ export default function Page() {
   const [query, setQuery] = useState('')
   const [attendance, setAttendance] = useState<Record<string, Attendance>>({})
   const [editing, setEditing] = useState<Block | null>(null)
+  const [showRecreosModal, setShowRecreosModal] = useState(false)
   const [dirty, setDirty] = useState(0)
   const [saved, setSaved] = useState(false)
   const [syncing, setSyncing] = useState(false)
@@ -212,7 +213,7 @@ export default function Page() {
         </div>
       </div>
 
-      {view === 'horario' && <ScheduleView course={course} setCourse={setCourse} filter={filter} setFilter={setFilter} selectedDays={selectedDays} setSelectedDays={setSelectedDays} visible={visible} courseTimes={courseTimes} setEditing={setEditing} onAdd={() => setEditing({ id: crypto.randomUUID(), curso: course, turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–08:40', materia: 'Nueva materia', docente: '', situacionRevista: 'Titular' })} />}
+      {view === 'horario' && <ScheduleView course={course} setCourse={setCourse} filter={filter} setFilter={setFilter} selectedDays={selectedDays} setSelectedDays={setSelectedDays} visible={visible} blocks={blocks} setBlocks={setBlocks} courseTimes={courseTimes} setEditing={setEditing} onAdd={() => setEditing({ id: crypto.randomUUID(), curso: course, turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–08:40', materia: 'Nueva materia', docente: '', situacionRevista: 'Titular' })} onManageRecreos={() => setShowRecreosModal(true)} />}
       {view === 'docentes' && <TeacherView query={query} setQuery={setQuery} teachers={teachers} results={searchResults} setEditing={setEditing} />}
       {view === 'ausencias' && <AusenciasView ausencias={ausencias} setAusencias={setAusencias} setDirty={setDirty} />}
       {view === 'paro' && <StrikeView blocks={dayBlocks} attendance={attendance} setAttendance={setAttendance} />}
@@ -223,6 +224,7 @@ export default function Page() {
       <span className="flex items-center gap-1.5"><Zap className="size-3 text-[#79b82a]" />Sincronización en vivo con Drive</span>
     </footer>
     {editing && <Editor block={editing} onClose={() => setEditing(null)} onSave={updateBlock} onDelete={() => { setBlocks((bs) => bs.filter((b) => b.id !== editing.id)); setEditing(null); setDirty((n) => n + 1) }} />}
+    {showRecreosModal && <RecreosModal course={course} blocks={blocks} setBlocks={setBlocks} onClose={() => setShowRecreosModal(false)} setDirty={setDirty} />}
   </div>
 }
 
@@ -230,7 +232,7 @@ function Tab({ active, onClick, icon, label }: { active: boolean; onClick: () =>
   return <button onClick={onClick} className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-bold transition whitespace-nowrap ${active ? 'border-[#168000] text-[#168000]' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>{icon}<span>{label}</span></button> 
 }
 
-function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setSelectedDays, visible, courseTimes, setEditing, onAdd }: any) { 
+function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setSelectedDays, visible, blocks, setBlocks, courseTimes, setEditing, onAdd, onManageRecreos }: any) { 
   return <>
     <div className="mb-4 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-3 shadow-sm">
       <label className="flex items-center justify-between sm:justify-start gap-2 text-sm font-bold">Curso 
@@ -244,7 +246,10 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
       <div className="flex rounded-lg bg-slate-100 p-1 justify-center">
         {(['Todos', 'Teoría', 'Taller'] as const).map((x) => <button key={x} onClick={() => setFilter(x)} className={`rounded-md px-3 py-1.5 text-xs font-bold ${filter === x ? 'bg-white text-[#168000] shadow-sm' : 'text-slate-500'}`}>{x === 'Todos' ? 'Todos' : `Solo ${x}`}</button>)}
       </div>
-      <Button className="bg-[#168000] text-white hover:bg-[#106500] sm:ml-auto w-full sm:w-auto" onClick={onAdd}><span className="text-lg leading-none">+</span> Agregar bloque / Recreo</Button>
+      <div className="flex gap-2 sm:ml-auto w-full sm:w-auto">
+        <Button variant="outline" className="flex-1 sm:flex-none border-[#ffb700] text-[#866500] hover:bg-[#fff8d8]" onClick={onManageRecreos}><Clock className="size-4 mr-1" /> Gestionar recreos</Button>
+        <Button className="bg-[#168000] text-white hover:bg-[#106500] flex-1 sm:flex-none" onClick={onAdd}><span className="text-lg leading-none">+</span> Agregar bloque</Button>
+      </div>
     </div>
     
     <div className="mb-4 flex flex-col sm:flex-row flex-wrap gap-2 text-xs font-semibold justify-between items-start sm:items-center">
@@ -254,7 +259,7 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
         <Legend color="bg-gray-900" label="Titular interino" />
         <Legend color="bg-green-600" label="Suplente" />
       </div>
-      <span className="text-slate-500">Desplazá horizontalmente la tabla en celulares · Doble clic para editar</span>
+      <span className="text-slate-500">Recreos en franja continua amarilla · Doble clic para editar</span>
     </div>
 
     <div className="overflow-x-auto rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
@@ -264,15 +269,30 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
           {days.map((d) => <div key={d} className="border-l border-[#d7e8c9] p-3">{d}</div>)}
         </div>
         {courseTimes.map((time: string) => {
-          const isRecreoRow = visible.some((x: Block) => x.horario === time && x.tipo === 'Recreo')
+          const isRecreoRow = blocks.some((x: Block) => x.curso === course && x.horario === time && x.tipo === 'Recreo')
+          
+          if (isRecreoRow) {
+            const recreoBlock = blocks.find((x: Block) => x.curso === course && x.horario === time && x.tipo === 'Recreo')
+            return (
+              <div key={time} onDoubleClick={() => recreoBlock && setEditing(recreoBlock)} className="grid grid-cols-[130px_1fr] border-b border-slate-100 bg-[#ffb700] text-slate-950 cursor-pointer hover:bg-[#f5ad00] transition">
+                <div className="flex flex-col justify-center gap-1 p-2.5 font-mono text-xs font-black uppercase tracking-wider border-r border-[#e0a200]">
+                  {time}
+                </div>
+                <div className="flex items-center justify-between px-4 py-2 text-xs font-black uppercase tracking-[0.3em]">
+                  <span>RECREO</span>
+                  <span className="text-[10px] font-bold lowercase opacity-75">(Doble clic para editar / borrar)</span>
+                </div>
+              </div>
+            )
+          }
+
           return (
-            <div key={time} className={`grid min-h-[100px] grid-cols-[130px_repeat(5,1fr)] border-b border-slate-100 ${isRecreoRow ? 'bg-[#fff8d8]' : ''}`}>
+            <div key={time} className="grid min-h-[100px] grid-cols-[130px_repeat(5,1fr)] border-b border-slate-100">
               <div className="flex flex-col justify-center gap-1 p-2 sm:p-3">
                 <span className="font-mono text-xs sm:text-sm font-bold text-slate-700">{time}</span>
-                {isRecreoRow && <span className="w-fit rounded bg-[#ffe878] px-1.5 py-0.5 text-[9px] font-black uppercase text-[#785c00]">Recreo</span>}
               </div>
               {days.map((day) => { 
-                const cellBlocks = visible.filter((x: Block) => x.dia === day && x.horario === time)
+                const cellBlocks = visible.filter((x: Block) => x.dia === day && x.horario === time && x.tipo !== 'Recreo')
                 return (
                   <div key={day} className="border-l border-slate-100 p-1.5 sm:p-2">
                     <div className={`grid gap-1 h-full ${cellBlocks.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
@@ -291,9 +311,72 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
   </> 
 }
 
+function RecreosModal({ course, blocks, setBlocks, onClose, setDirty }: any) {
+  const [nuevoHorario, setNuevoHorario] = useState('09:40–09:50')
+
+  const recreosActuales = blocks.filter((b: Block) => b.curso === course && b.tipo === 'Recreo')
+
+  function agregarRecreo(e: React.FormEvent) {
+    e.preventDefault()
+    if (!nuevoHorario) return
+    const nuevo: Block = {
+      id: crypto.randomUUID(),
+      curso: course,
+      turno: 'Teoría',
+      tipo: 'Recreo',
+      dia: 'Lunes',
+      horario: nuevoHorario,
+      materia: 'Recreo',
+      docente: '',
+      situacionRevista: 'Titular'
+    }
+    setBlocks([...blocks, nuevo])
+    setDirty((n: number) => n + 1)
+  }
+
+  function eliminarRecreo(id: string) {
+    setBlocks(blocks.filter((b: Block) => b.id !== id))
+    setDirty((n: number) => n + 1)
+  }
+
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="dialog" aria-modal="true">
+    <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
+      <div className="flex items-center justify-between border-b p-5">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-widest text-[#866500]">Gestión de Recreos</p>
+          <h2 className="text-xl font-black">Curso {course}</h2>
+        </div>
+        <button onClick={onClose} aria-label="Cerrar"><X /></button>
+      </div>
+      <div className="p-5 flex flex-col gap-4">
+        <form onSubmit={agregarRecreo} className="flex gap-2">
+          <input value={nuevoHorario} onChange={(e) => setNuevoHorario(e.target.value)} placeholder="Ej. 09:40–09:50" className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono font-bold" required />
+          <Button type="submit" className="bg-[#ffb700] text-slate-950 hover:bg-[#f5ad00] font-bold"><Plus className="size-4 mr-1" /> Sumar recreo</Button>
+        </form>
+        <div className="border-t pt-3">
+          <p className="text-xs font-bold text-slate-500 mb-2">Recreos configurados en este curso:</p>
+          {recreosActuales.length === 0 ? (
+            <p className="text-sm text-slate-400 italic py-2">No hay recreos configurados para este curso.</p>
+          ) : (
+            <div className="flex flex-col gap-2 max-h-[250px] overflow-y-auto">
+              {recreosActuales.map((r: Block) => (
+                <div key={r.id} className="flex items-center justify-between rounded-xl border border-[#ffb700]/50 bg-[#fff8d8] px-3 py-2">
+                  <span className="font-mono font-bold text-sm text-[#866500]">{r.horario}</span>
+                  <Button variant="ghost" size="sm" onClick={() => eliminarRecreo(r.id)} className="text-red-600 hover:text-red-700 h-8 px-2"><Trash2 className="size-4" /></Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="flex justify-end border-t bg-slate-50 p-4">
+        <Button onClick={onClose} className="bg-[#168000] text-white hover:bg-[#106500]">Aceptar y cerrar</Button>
+      </div>
+    </div>
+  </div>
+}
+
 function BlockCard({ block, onDoubleClick }: { block: Block; onDoubleClick: () => void }) { 
-  if (block.tipo === 'Recreo') return <button type="button" onDoubleClick={onDoubleClick} onClick={onDoubleClick} className="flex h-full min-h-14 w-full cursor-pointer items-center justify-center rounded-xl border border-[#f1d568] bg-[#fff8d8] text-xs font-bold text-[#866500]">Recreo</button>
-  
   const statusColorClass = block.situacionRevista === 'Titular' ? 'text-blue-700' : block.situacionRevista === 'Provisional' ? 'text-red-700' : 'text-gray-950'
 
   return <div onDoubleClick={onDoubleClick} className={`group cursor-pointer rounded-xl border p-2 transition hover:-translate-y-0.5 hover:shadow-md flex flex-col justify-between ${block.tipo === 'Teoría' ? 'border-[#9dcc39] bg-[#eaf7d9] text-[#205d19]' : 'border-slate-300 bg-slate-50 text-slate-700'}`}>
@@ -626,7 +709,7 @@ function Editor({ block, onClose, onSave, onDelete }: { block: Block; onClose: (
         <Field label="Suplente" wide><input value={draft.suplente ?? ''} onChange={(e) => set('suplente', e.target.value)} placeholder="Opcional" /></Field>
       </div>
       <div className="flex items-center justify-between border-t bg-slate-50 p-4">
-        <Button variant="ghost" className="text-red-600 hover:text-red-700" onDelete={onDelete}>Eliminar bloque</Button>
+        <Button variant="ghost" className="text-red-600 hover:text-red-700" onClick={onDelete}>Eliminar bloque</Button>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button className="bg-[#168000] text-white hover:bg-[#106500]" onClick={() => onSave(draft)}>Guardar bloque</Button>
