@@ -55,17 +55,38 @@ type ParoRecord = {
   grupo?: string;
 }
 
-// Ruta apuntando al archivo que acabas de subir a la carpeta public
 const logo = '/logo.png'
-
-const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbwNLUJ3x0Ep2oD0007f0EVXtMwwfBGsBeravfwTAE4qv2pKUBlBYboLtWkPqx0fjdXv/exec'
+const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbwu4e1jgQa9_FNL_bTRmug02v0P4_-weRsftCX99GityPQAwxUGvtIF54saJqiLVjp6/exec'
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
 const courses = ['1°1°', '1°2°', '1°3°', '1°4°', '1°5°', '1°6°', '2°1°', '2°2°', '2°3°', '2°4°', '2°5°', '2°6°', '3°1°', '3°2°', '3°3°', '3°4°', '3°5°', '3°6°', '4°1°', '4°2°', '4°3°', '4°4°', '4°5°', '5°1°', '5°2°', '5°3°', '5°6°', '5°7°', '6°1°', '6°2°', '6°3°', '6°6°', '6°7°', '7°1°', '7°2°', '7°3°', '7°6°', '7°7°']
 
-const seed: Block[] = []
+const seed: Block[] = [
+  { id: '1', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–09:40', materia: 'CS. NATURALES', docente: 'MARTIN', situacionRevista: 'Titular' },
+  { id: '2', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Martes', horario: '07:40–09:40', materia: 'PRÁCT. DE LENGUAJE', docente: 'ELS (D.D. 2018)', situacionRevista: 'Titular' },
+  { id: '3', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Miércoles', horario: '07:40–09:40', materia: 'CS. NATURALES', docente: 'MARTIN', situacionRevista: 'Titular' },
+  { id: '4', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Jueves', horario: '07:40–09:40', materia: 'MATEMÁTICA', docente: 'BRANDAN', situacionRevista: 'Titular' },
+  { id: '5', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Viernes', horario: '07:40–09:40', materia: 'CCD', docente: 'ECHAVERRIA', situacionRevista: 'Titular' },
+  { id: '6', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '09:50–11:50', materia: 'CS. SOCIALES', docente: 'BOGARIN', situacionRevista: 'Provisional' },
+  { id: '7', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Martes', horario: '09:50–11:50', materia: 'MATEMÁTICA', docente: 'BRANDAN', situacionRevista: 'Titular' },
+  { id: '8', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Miércoles', horario: '09:50–11:50', materia: 'PRÁCT. DE LENGUAJE', docente: 'ELS', situacionRevista: 'Titular' },
+  { id: '9', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Jueves', horario: '09:50–11:50', materia: 'INGLÉS', docente: 'CORRADINO ANDREA (MAD 2026)', situacionRevista: 'Titular' },
+  { id: '10', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Viernes', horario: '09:50–11:50', materia: 'ED. ARTÍSTICA', docente: 'PELLEGRINI', situacionRevista: 'Titular', suplente: 'TORREZ JUAN DAVID' },
+  { id: '11', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Jueves', horario: '11:50–12:50', materia: 'CS. SOCIALES', docente: 'BOGARIN', situacionRevista: 'Provisional' },
+  { id: '12', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Viernes', horario: '11:50–12:50', materia: 'CS. SOCIALES', docente: 'BOGARIN', situacionRevista: 'Provisional' },
+  { id: '13', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Lunes', grupo: 'Grupo A', horario: '13:00–15:00', materia: 'Sistemas Tecnológicos', docente: 'ATENCIO', situacionRevista: 'Provisional' },
+  { id: '14', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Lunes', grupo: 'Grupo B', horario: '13:00–15:00', materia: 'Procedim. Técnicos', docente: 'FERNANDEZ OSVALDO', situacionRevista: 'Provisional' },
+  { id: '15', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Martes', horario: '13:00–15:00', materia: 'Educación Física', docente: 'RODRIGUEZ, DANIEL', situacionRevista: 'Titular' },
+  { id: '16', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', grupo: 'Grupo A', horario: '13:00–15:00', materia: 'Lenguajes Tecnológicos', docente: 'OSORIO MARCELA', situacionRevista: 'Provisional' },
+  { id: '17', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', grupo: 'Grupo B', horario: '13:00–15:00', materia: 'Lenguajes Tecnológicos', docente: 'MAZEI', situacionRevista: 'Provisional' },
+  { id: '18', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Lunes', grupo: 'Grupo A', horario: '15:10–17:10', materia: 'Procedim. Técnicos', docente: 'FERNANDEZ OSVALDO', situacionRevista: 'Provisional' },
+  { id: '19', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Lunes', grupo: 'Grupo B', horario: '15:10–17:10', materia: 'Sistemas Tecnológicos', docente: 'ATENCIO', situacionRevista: 'Provisional' },
+]
+
 const seedAusencias: AusenciaRecord[] = []
-const seedPreceptores: PreceptorAssignment[] = courses.map((c) => ({
-  curso: c, preceptorTitular: '', preceptorSuplente: ''
+const seedPreceptores: PreceptorAssignment[] = courses.map((c, idx) => ({
+  curso: c,
+  preceptorTitular: ['CAYATA', 'FEMIA', 'CEPEDA', 'NAHIA', 'ALFONSIN', 'GRISELDA'][idx % 6],
+  preceptorSuplente: idx % 3 === 0 ? 'RODRIGUEZ SILVINA' : ''
 }))
 
 const statusStyle: Record<Status, string> = { Titular: 'text-blue-700 bg-blue-50 border-blue-200', Provisional: 'text-red-700 bg-red-50 border-red-200', 'Titular Interino': 'text-gray-950 bg-gray-100 border-gray-300' }
@@ -106,6 +127,27 @@ export default function Page() {
     setEditing(null)
     setDirty((n) => n + 1) 
   }
+
+  function descargarBaseCompletaExcel() {
+    const wb = XLSX.utils.book_new()
+    const dataRows = blocks.map((b) => ({
+      Curso: b.curso,
+      Turno: b.turno,
+      Tipo: b.tipo,
+      Día: b.dia,
+      Grupo: b.grupo || '',
+      Horario: b.horario,
+      Materia: b.materia,
+      Docente: b.docente,
+      'Situación Revista': b.situacionRevista,
+      Suplente: b.suplente || ''
+    }))
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dataRows), 'DATA_CON_SITUACION')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(preceptores), 'PRECEPTORES')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(paroHistorial), 'RELEVAMIENTO_PARO')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ausencias), 'AUSENCIAS_HISTORICO')
+    XLSX.writeFile(wb, 'HORARIOS-app-actualizado.xlsx')
+  }
   
   async function syncSpreadsheet() {
     setSyncing(true)
@@ -115,22 +157,29 @@ export default function Page() {
       const payload = await response.json()
       const rows = Array.isArray(payload) ? payload : payload.data ?? payload.rows ?? payload.blocks ?? payload.values
       
-      const read = (row: any, ...keys: string[]) => { const found = keys.find((key) => row?.[key] !== undefined); return found ? row[found] : '' }
+      const read = (row: any, ...keys: string[]) => { const found = keys.find((key) => row?.[key] !== undefined && row?.[key] !== ''); return found ? row[found] : '' }
       
       if (Array.isArray(rows) && rows.length) {
-        const normalized = rows.map((row: any, index: number) => ({ 
-          id: String(read(row, 'id', 'ID') || index + 1), 
-          curso: String(read(row, 'curso', 'Curso')), 
-          turno: read(row, 'turno', 'Turno') || 'Teoría', 
-          tipo: read(row, 'tipo', 'Tipo') || 'Teoría', 
-          dia: read(row, 'dia', 'Día', 'Dia'), 
-          horario: read(row, 'horario', 'Horario'), 
-          materia: read(row, 'materia', 'Materia'), 
-          docente: read(row, 'docente', 'Docente'), 
-          situacionRevista: read(row, 'situacionRevista', 'Situación Revista', 'Situacion Revista') || 'Titular', 
-          suplente: read(row, 'suplente', 'Suplente'), 
-          grupo: read(row, 'grupo', 'Grupo') 
-        }))
+        const normalized = rows.map((row: any, index: number) => {
+          const doc = String(read(row, 'docente', 'Docente') || '')
+          let sit = String(read(row, 'situacionRevista', 'Situación Revista', 'Situacion Revista') || '')
+          if (!sit) {
+            sit = doc.toUpperCase().includes('TI 2026') ? 'Titular Interino' : 'Titular'
+          }
+          return { 
+            id: String(read(row, 'id', 'ID') || index + 1), 
+            curso: String(read(row, 'curso', 'Curso') || (index === 0 ? '1°1°' : '')), 
+            turno: (read(row, 'turno', 'Turno') || 'Teoría') as 'Teoría' | 'Taller', 
+            tipo: (read(row, 'tipo', 'Tipo') || 'Teoría') as 'Teoría' | 'Taller' | 'Recreo', 
+            dia: String(read(row, 'dia', 'Día', 'Dia') || ''), 
+            horario: String(read(row, 'horario', 'Horario') || ''), 
+            materia: String(read(row, 'materia', 'Materia') || ''), 
+            docente: doc, 
+            situacionRevista: sit as Status, 
+            suplente: String(read(row, 'suplente', 'Suplente') || ''), 
+            grupo: String(read(row, 'grupo', 'Grupo') || '') 
+          }
+        })
         setBlocks(normalized)
       }
 
@@ -154,7 +203,9 @@ export default function Page() {
           preceptorTitular: String(read(p, 'preceptorTitular', 'Preceptor Titular') || ''),
           preceptorSuplente: String(read(p, 'preceptorSuplente', 'Preceptor Suplente') || '')
         }))
-        if (normPrec.length > 0) setPreceptores(normPrec)
+        if (normPrec.some((p: PreceptorAssignment) => p.preceptorTitular || p.preceptorSuplente)) {
+          setPreceptores(normPrec)
+        }
       }
 
       if (payload.paroHistorial && Array.isArray(payload.paroHistorial)) {
@@ -173,15 +224,19 @@ export default function Page() {
         setParoHistorial(normParo)
       }
 
-      setSyncMessage(`Conectado exitosamente (${courses.length} cursos)`)
+      setSyncMessage(`Conectado exitosamente (${Array.isArray(rows) ? rows.length : courses.length} bloques sincronizados)`)
     } catch { 
-      setSyncMessage('No se pudo conectar · usando datos locales') 
+      setSyncMessage('No se pudo conectar · usando respaldo local') 
     } finally { 
       setSyncing(false) 
     }
   }
 
   async function save() { 
+    if (blocks.length === 0) {
+      alert('Sincronizando datos... Esperá un segundo antes de guardar para no sobreescribir la planilla.')
+      return
+    }
     setSyncing(true)
     try { 
       await fetch(spreadsheetApi, { 
@@ -219,6 +274,7 @@ export default function Page() {
           </div>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <Button variant="outline" size="sm" onClick={descargarBaseCompletaExcel}><FileSpreadsheet data-icon="inline-start" />Base Completa (Excel)</Button>
           <Button variant="outline" size="sm" onClick={syncSpreadsheet} disabled={syncing}><Download data-icon="inline-start" />{syncing ? 'Conectando…' : 'Sincronizar'}</Button>
         </div>
       </div>
@@ -877,7 +933,7 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
     if (!paroRef.current) return
     setDownloadingImg(true)
     try {
-      const dataUrl = await toPng(paroRef.current, { cacheBust: true, backgroundColor: '#f5f8f2', quality: 0.95 })
+      const dataUrl = await toPng(paroRef.current, { cacheBust: true, backgroundColor: '#ffffff', quality: 0.95 })
       const link = document.createElement('a')
       link.download = `registro-paro-${date}${cursoFiltro !== 'Todos' ? '-' + cursoFiltro : ''}.png`
       link.href = dataUrl
