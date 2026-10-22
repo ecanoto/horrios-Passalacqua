@@ -692,16 +692,15 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [cursoFiltro, setCursoFiltro] = useState('Todos')
   
-  // Detectar el día de la semana correspondiente a la fecha seleccionada
   const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado']
   const dateObj = new Date(date + 'T00:00:00')
   const nombreDiaSemana = dayNames[dateObj.getDay()] || 'Lunes'
   const esFinDeSemana = nombreDiaSemana === 'Domingo' || nombreDiaSemana === 'Sábado'
 
-  // Filtrar bloques estrictamente para los docentes que tienen clases ese día de la semana
+  // Filtrar estrictamente solo los docentes que tienen clase ESE DÍA DE LA SEMANA
   const bloquesDelDia = useMemo(() => {
     if (esFinDeSemana) return []
-    let list = dayBlocks.filter((b: Block) => b.dia === nombreDiaSemana && b.tipo !== 'Recreo')
+    let list = (dayBlocks || []).filter((b: Block) => b && b.dia === nombreDiaSemana && b.tipo !== 'Recreo')
     if (cursoFiltro !== 'Todos') {
       list = list.filter((b: Block) => b.curso === cursoFiltro)
     }
@@ -737,8 +736,7 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
     return reg?.estadoParo === 'paro'
   }).length
 
-  // Obtener preceptor del curso seleccionado (si hay un curso filtrado)
-  const preceptorActual = cursoFiltro !== 'Todos' ? preceptores.find((p: PreceptorAssignment) => p.curso === cursoFiltro) : null
+  const preceptorActual = cursoFiltro !== 'Todos' ? preceptores?.find((p: PreceptorAssignment) => p.curso === cursoFiltro) : null
 
   return <div className="flex flex-col gap-6">
     <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-4 shadow-sm">
@@ -781,10 +779,10 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
           <tbody>
             {esFinDeSemana ? (
               <tr><td colSpan={5} className="p-6 text-center text-slate-400 font-semibold">Los fines de semana no hay actividad escolar programada.</td></tr>
-            ) : bloquesFiltrados.length === 0 ? (
+            ) : bloquesDelDia.length === 0 ? (
               <tr><td colSpan={5} className="p-6 text-center text-slate-400 font-semibold">No hay docentes programados para este día con los filtros seleccionados.</td></tr>
             ) : (
-              bloquesFiltrados.map((b: Block) => {
+              bloquesDelDia.map((b: Block) => {
                 const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia)
                 const estadoActual = reg?.estadoParo || 'normal'
                 const obsActual = reg?.observaciones || ''
