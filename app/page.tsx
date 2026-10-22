@@ -3,9 +3,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as XLSX from 'xlsx'
 import { Button } from '@/components/ui/button'
-import { CalendarDays, Check, ChevronDown, Cloud, Download, FileSpreadsheet, ListFilter, Pencil, Printer, Search, ShieldAlert, ShieldCheck, UserX, Users, X, Zap, Clock, Trash2, Plus } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, Cloud, Download, FileSpreadsheet, ListFilter, Pencil, Printer, Search, ShieldAlert, ShieldCheck, UserCheck, UserX, Users, X, Zap, Clock, Trash2, Plus } from 'lucide-react'
 
-type View = 'horario' | 'docentes' | 'paro' | 'ausencias'
+type View = 'horario' | 'docentes' | 'ausencias' | 'preceptores' | 'paro'
 type Status = 'Titular' | 'Provisional' | 'Titular Interino'
 type Attendance = 'normal' | 'paro' | 'licencia'
 type CoberturaStatus = 'Cubierto por Decreto' | 'Sin cubrir'
@@ -35,9 +35,27 @@ type AusenciaRecord = {
   docenteDecreto: string;
 }
 
+type PreceptorAssignment = {
+  curso: string;
+  preceptorTitular: string;
+  preceptorSuplente: string;
+}
+
+type ParoRecord = {
+  id: string;
+  fecha: string;
+  curso: string;
+  horario: string;
+  materia: string;
+  docente: string;
+  estadoParo: Attendance;
+  observaciones?: string;
+}
+
 const logo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-M35qmFS9dpbN14cGWOmnvOvidznySB.png'
-const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbzL_4FweTgmOyI-tPE7uTzUlrNqcGNjW7J4OyXBl6AROApJnFAOPwQSES5DYjaarP1R/exec'
+const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbyzwuM5bDtNhaBZUHsgN7BzxcMwPEBqORz_PkGuzYpo7Y2jYclWMUMnqXGXN7WPZDJ7/exec'
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
+const courses = ['1°1°', '1°2°', '1°3°', '1°4°', '1°5°', '1°6°', '2°1°', '2°2°', '2°3°', '2°4°', '2°5°', '2°6°', '3°1°', '3°2°', '3°3°', '3°4°', '3°5°', '3°6°', '4°1°', '4°2°', '4°3°', '4°4°', '4°5°', '5°1°', '5°2°', '5°3°', '5°6°', '5°7°', '6°1°', '6°2°', '6°3°', '6°6°', '6°7°', '7°1°', '7°2°', '7°3°', '7°6°', '7°7°']
 
 const seed: Block[] = [
   { id: '1', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–08:40', materia: 'Cs. Naturales', docente: 'MARTIN', situacionRevista: 'Titular' },
@@ -50,17 +68,25 @@ const seedAusencias: AusenciaRecord[] = [
   { id: 'AUS-001', curso: '1°1°', mes: 'Abril', fecha: '2026-04-06', materia: 'Cs. Sociales', docenteAusente: 'BOGARIN', estadoCobertura: 'Cubierto por Decreto', docenteDecreto: 'ASPREA' },
 ]
 
+const seedPreceptores: PreceptorAssignment[] = courses.map((c, idx) => ({
+  curso: c,
+  preceptorTitular: ['CAYATA', 'FEMIA', 'CEPEDA', 'NAHIA', 'ALFONSIN', 'GRISELDA'][idx % 6],
+  preceptorSuplente: idx % 3 === 0 ? 'RODRIGUEZ SILVINA' : ''
+}))
+
 const statusStyle: Record<Status, string> = { Titular: 'text-blue-700 bg-blue-50 border-blue-200', Provisional: 'text-red-700 bg-red-50 border-red-200', 'Titular Interino': 'text-gray-950 bg-gray-100 border-gray-300' }
 
 export default function Page() {
   const [view, setView] = useState<View>('horario')
   const [blocks, setBlocks] = useState(seed)
   const [ausencias, setAusencias] = useState<AusenciaRecord[]>(seedAusencias)
+  const [preceptores, setPreceptores] = useState<PreceptorAssignment[]>(seedPreceptores)
+  const [paroHistorial, setParoHistorial] = useState<ParoRecord[]>([])
+  
   const [course, setCourse] = useState('1°1°')
   const [filter, setFilter] = useState<'Todos' | 'Teoría' | 'Taller'>('Todos')
   const [selectedDays, setSelectedDays] = useState(days)
   const [query, setQuery] = useState('')
-  const [attendance, setAttendance] = useState<Record<string, Attendance>>({})
   const [editing, setEditing] = useState<Block | null>(null)
   const [showRecreosModal, setShowRecreosModal] = useState(false)
   const [dirty, setDirty] = useState(0)
@@ -69,24 +95,6 @@ export default function Page() {
   const [syncMessage, setSyncMessage] = useState('Conectando con Google Drive…')
 
   useEffect(() => { syncSpreadsheet() }, [])
-
-  // Lista dinámica de todos los cursos existentes en los bloques (ordenados naturalmente)
-  const courses = useMemo(() => {
-    const list = Array.from(new Set(blocks.map((b) => b.curso).filter(Boolean)))
-    return list.sort((a, b) => {
-      const numA = parseInt(a) || 0
-      const numB = parseInt(b) || 0
-      if (numA !== numB) return numA - numB
-      return a.localeCompare(b)
-    })
-  }, [blocks])
-
-  // Asegurar que el curso seleccionado sea válido si cambian los datos
-  useEffect(() => {
-    if (courses.length > 0 && !courses.includes(course)) {
-      setCourse(courses[0])
-    }
-  }, [courses, course])
 
   const courseTimes = useMemo(() => {
     const courseBlocks = blocks.filter((b) => b.curso === course)
@@ -109,6 +117,8 @@ export default function Page() {
     const wb = XLSX.utils.book_new()
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(blocks.map(({ id, ...r }) => ({ ...r, 'Situación Revista': r.situacionRevista }))), 'DATA')
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ausencias), 'AUSENCIAS')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(preceptores), 'PRECEPTORES')
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(paroHistorial), 'PARO_HISTORIAL')
     XLSX.writeFile(wb, 'gestion-escolar-eest6.xlsx') 
   }
 
@@ -153,6 +163,10 @@ export default function Page() {
         setAusencias(normAus)
       }
 
+      if (payload.paroHistorial && Array.isArray(payload.paroHistorial)) {
+        setParoHistorial(payload.paroHistorial)
+      }
+
       setSyncMessage(`Conectado exitosamente (${courses.length} cursos cargados)`)
     } catch { 
       setSyncMessage('No se pudo conectar · usando datos locales') 
@@ -171,7 +185,8 @@ export default function Page() {
         body: JSON.stringify({ 
           action: 'replace', 
           rows: blocks.map(({ id, ...row }) => row), 
-          ausencias: ausencias 
+          ausencias: ausencias,
+          paroHistorial: paroHistorial 
         }) 
       }) 
       setSaved(true)
@@ -192,7 +207,7 @@ export default function Page() {
           <img src={logo} alt="Escudo E.E.S.T. N° 6" className="size-12 sm:size-14 object-contain shrink-0" />
           <div>
             <div className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.22em] text-[#168000]">E.E.S.T. N° 6</div>
-            <h1 className="text-base sm:text-lg font-black tracking-tight">Gestión de Horarios y Ausencias</h1>
+            <h1 className="text-base sm:text-lg font-black tracking-tight">Gestión de Horarios, Preceptores y Paros</h1>
             <p className="text-[11px] sm:text-xs text-slate-500">Banfield · Lomas de Zamora</p>
           </div>
         </div>
@@ -205,7 +220,8 @@ export default function Page() {
         <Tab active={view === 'horario'} onClick={() => setView('horario')} icon={<CalendarDays className="size-4 shrink-0" />} label="Horarios" />
         <Tab active={view === 'docentes'} onClick={() => setView('docentes')} icon={<Users className="size-4 shrink-0" />} label="Docentes" />
         <Tab active={view === 'ausencias'} onClick={() => setView('ausencias')} icon={<UserX className="size-4 shrink-0" />} label="Ausencias" />
-        <Tab active={view === 'paro'} onClick={() => setView('paro')} icon={<ShieldCheck className="size-4 shrink-0" />} label="Paro" />
+        <Tab active={view === 'preceptores'} onClick={() => setView('preceptores')} icon={<UserCheck className="size-4 shrink-0" />} label="Preceptores" />
+        <Tab active={view === 'paro'} onClick={() => setView('paro')} icon={<ShieldCheck className="size-4 shrink-0" />} label="Registro de Paro" />
       </nav>
     </header>
     
@@ -215,7 +231,7 @@ export default function Page() {
           <div>
             <p className="mb-1 text-xs font-bold uppercase tracking-[0.15em] text-[#168000]">Panel de control</p>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight">
-              {view === 'horario' ? 'Horario semanal, recreos y grupos' : view === 'docentes' ? 'Buscar docentes' : view === 'ausencias' ? 'Base de datos de ausencias y cobertura' : 'Parte diario de paro'}
+              {view === 'horario' ? 'Horario semanal y recreos' : view === 'docentes' ? 'Buscar docentes' : view === 'ausencias' ? 'Base de datos de ausencias y cobertura' : view === 'preceptores' ? 'Asignación de preceptores por curso' : 'Historial y control diario de paro'}
             </h2>
             <p className="mt-1 text-xs sm:text-sm text-slate-500">Actualización activa · {syncMessage}</p>
           </div>
@@ -232,7 +248,8 @@ export default function Page() {
       {view === 'horario' && <ScheduleView course={course} setCourse={setCourse} filter={filter} setFilter={setFilter} selectedDays={selectedDays} setSelectedDays={setSelectedDays} visible={visible} blocks={blocks} setBlocks={setBlocks} courseTimes={courseTimes} courses={courses} setEditing={setEditing} onAdd={() => setEditing({ id: crypto.randomUUID(), curso: course, turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–08:40', materia: 'Nueva materia', docente: '', situacionRevista: 'Titular' })} onManageRecreos={() => setShowRecreosModal(true)} />}
       {view === 'docentes' && <TeacherView query={query} setQuery={setQuery} teachers={teachers} results={searchResults} setEditing={setEditing} />}
       {view === 'ausencias' && <AusenciasView ausencias={ausencias} setAusencias={setAusencias} setDirty={setDirty} courses={courses} />}
-      {view === 'paro' && <StrikeView blocks={dayBlocks} attendance={attendance} setAttendance={setAttendance} courses={courses} />}
+      {view === 'preceptores' && <PreceptoresView preceptores={preceptores} setPreceptores={setPreceptores} courses={courses} setDirty={setDirty} />}
+      {view === 'paro' && <StrikeView dayBlocks={dayBlocks} courses={courses} paroHistorial={paroHistorial} setParoHistorial={setParoHistorial} setDirty={setDirty} />}
     </main>
     
     <footer className="mx-auto flex max-w-[1500px] flex-col sm:flex-row items-center justify-between gap-2 border-t border-[#d7e8c9] px-4 sm:px-5 py-4 text-xs text-slate-500 print:hidden text-center sm:text-left">
@@ -263,8 +280,8 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
         {(['Todos', 'Teoría', 'Taller'] as const).map((x) => <button key={x} onClick={() => setFilter(x)} className={`rounded-md px-3 py-1.5 text-xs font-bold ${filter === x ? 'bg-white text-[#168000] shadow-sm' : 'text-slate-500'}`}>{x === 'Todos' ? 'Todos' : `Solo ${x}`}</button>)}
       </div>
       <div className="flex gap-2 sm:ml-auto w-full sm:w-auto">
-        <Button variant="outline" className="flex-1 sm:flex-none border-[#ffb700] text-[#866500] hover:bg-[#fff8d8]" onClick={onManageRecreos}><Clock className="size-4 mr-1" /> Gestionar recreos</Button>
-        <Button className="bg-[#168000] text-white hover:bg-[#106500] flex-1 sm:flex-none" onClick={onAdd}><span className="text-lg leading-none">+</span> Agregar bloque</Button>
+        <Button variant="outline" className="flex-1 sm:flex-none border-[#ffb700] text-[#866500] hover:bg-[#fff8d8]" onClick={onManageRecreos}><Clock className="size-4 mr-1" /> Recreos</Button>
+        <Button className="bg-[#168000] text-white hover:bg-[#106500] flex-1 sm:flex-none" onClick={onAdd}><span className="text-lg leading-none">+</span> Agregar</Button>
       </div>
     </div>
     
@@ -275,7 +292,7 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
         <Legend color="bg-gray-900" label="Titular interino" />
         <Legend color="bg-green-600" label="Suplente" />
       </div>
-      <span className="text-slate-500">Recreos en franja continua amarilla · Doble clic para editar</span>
+      <span className="text-slate-500">Doble clic para editar</span>
     </div>
 
     <div className="overflow-x-auto rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
@@ -296,7 +313,7 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
                 </div>
                 <div className="flex items-center justify-between px-4 py-2 text-xs font-black uppercase tracking-[0.3em]">
                   <span>RECREO</span>
-                  <span className="text-[10px] font-bold lowercase opacity-75">(Doble clic para editar / borrar)</span>
+                  <span className="text-[10px] font-bold lowercase opacity-75">(Doble clic para editar)</span>
                 </div>
               </div>
             )
@@ -329,22 +346,13 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
 
 function RecreosModal({ course, blocks, setBlocks, onClose, setDirty }: any) {
   const [nuevoHorario, setNuevoHorario] = useState('09:40–09:50')
-
   const recreosActuales = blocks.filter((b: Block) => b.curso === course && b.tipo === 'Recreo')
 
   function agregarRecreo(e: React.FormEvent) {
     e.preventDefault()
     if (!nuevoHorario) return
     const nuevo: Block = {
-      id: crypto.randomUUID(),
-      curso: course,
-      turno: 'Teoría',
-      tipo: 'Recreo',
-      dia: 'Lunes',
-      horario: nuevoHorario,
-      materia: 'Recreo',
-      docente: '',
-      situacionRevista: 'Titular'
+      id: crypto.randomUUID(), curso: course, turno: 'Teoría', tipo: 'Recreo', dia: 'Lunes', horario: nuevoHorario, materia: 'Recreo', docente: '', situacionRevista: 'Titular'
     }
     setBlocks([...blocks, nuevo])
     setDirty((n: number) => n + 1)
@@ -358,22 +366,17 @@ function RecreosModal({ course, blocks, setBlocks, onClose, setDirty }: any) {
   return <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="dialog" aria-modal="true">
     <div className="w-full max-w-md rounded-2xl bg-white shadow-2xl">
       <div className="flex items-center justify-between border-b p-5">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-widest text-[#866500]">Gestión de Recreos</p>
-          <h2 className="text-xl font-black">Curso {course}</h2>
-        </div>
+        <div><p className="text-xs font-bold uppercase tracking-widest text-[#866500]">Recreos</p><h2 className="text-xl font-black">Curso {course}</h2></div>
         <button onClick={onClose} aria-label="Cerrar"><X /></button>
       </div>
       <div className="p-5 flex flex-col gap-4">
         <form onSubmit={agregarRecreo} className="flex gap-2">
           <input value={nuevoHorario} onChange={(e) => setNuevoHorario(e.target.value)} placeholder="Ej. 09:40–09:50" className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-mono font-bold" required />
-          <Button type="submit" className="bg-[#ffb700] text-slate-950 hover:bg-[#f5ad00] font-bold"><Plus className="size-4 mr-1" /> Sumar recreo</Button>
+          <Button type="submit" className="bg-[#ffb700] text-slate-950 hover:bg-[#f5ad00] font-bold"><Plus className="size-4 mr-1" /> Sumar</Button>
         </form>
         <div className="border-t pt-3">
-          <p className="text-xs font-bold text-slate-500 mb-2">Recreos configurados en este curso:</p>
-          {recreosActuales.length === 0 ? (
-            <p className="text-sm text-slate-400 italic py-2">No hay recreos configurados para este curso.</p>
-          ) : (
+          <p className="text-xs font-bold text-slate-500 mb-2">Recreos actuales:</p>
+          {recreosActuales.length === 0 ? <p className="text-sm text-slate-400 italic py-2">Sin recreos.</p> : (
             <div className="flex flex-col gap-2 max-h-[250px] overflow-y-auto">
               {recreosActuales.map((r: Block) => (
                 <div key={r.id} className="flex items-center justify-between rounded-xl border border-[#ffb700]/50 bg-[#fff8d8] px-3 py-2">
@@ -386,7 +389,7 @@ function RecreosModal({ course, blocks, setBlocks, onClose, setDirty }: any) {
         </div>
       </div>
       <div className="flex justify-end border-t bg-slate-50 p-4">
-        <Button onClick={onClose} className="bg-[#168000] text-white hover:bg-[#106500]">Aceptar y cerrar</Button>
+        <Button onClick={onClose} className="bg-[#168000] text-white hover:bg-[#106500]">Aceptar</Button>
       </div>
     </div>
   </div>
@@ -531,7 +534,6 @@ function AusenciasView({ ausencias, setAusencias, setDirty, courses }: any) {
       <Stat label="Sin cubrir" value={sinCubrir} icon={<ShieldAlert />} />
     </div>
 
-    {/* Filtros de Búsqueda Avanzada */}
     <div className="rounded-2xl border border-[#d7e8c9] bg-white p-4 sm:p-5 shadow-sm">
       <h3 className="mb-3 font-black text-base flex items-center gap-2"><Search className="size-4 text-[#168000]" /> Filtrar y buscar ausencias</h3>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -561,7 +563,6 @@ function AusenciasView({ ausencias, setAusencias, setDirty, courses }: any) {
       </div>
     </div>
 
-    {/* Formulario de registro rápido */}
     <div className="rounded-2xl border border-[#d7e8c9] bg-white p-4 sm:p-5 shadow-sm">
       <h3 className="mb-4 font-black text-lg">Registrar nueva ausencia docente</h3>
       <form onSubmit={registrarAusencia} className="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
@@ -594,7 +595,6 @@ function AusenciasView({ ausencias, setAusencias, setDirty, courses }: any) {
       </form>
     </div>
 
-    {/* Historial de Ausencias Filtrado */}
     <div className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
       <div className="border-b p-4 flex items-center justify-between">
         <div>
@@ -633,55 +633,125 @@ function AusenciasView({ ausencias, setAusencias, setDirty, courses }: any) {
   </div>
 }
 
-function Stat({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) { 
-  return <div className="rounded-2xl border border-[#d7e8c9] bg-white p-3 sm:p-4 shadow-sm"><div className="mb-2 sm:mb-3 flex items-center justify-between text-[#168000]">{icon}<span className="text-xl sm:text-2xl font-black text-slate-900">{value}</span></div><p className="text-[11px] sm:text-xs font-bold text-slate-500">{label}</p></div> 
+function PreceptoresView({ preceptores, setPreceptores, courses, setDirty }: any) {
+  const [filtroCurso, setFiltroCurso] = useState('')
+
+  function actualizarPreceptor(curso: string, campo: 'preceptorTitular' | 'preceptorSuplente', valor: string) {
+    setPreceptores(preceptores.map((p: PreceptorAssignment) => p.curso === curso ? { ...p, [campo]: valor.toUpperCase() } : p))
+    setDirty((n: number) => n + 1)
+  }
+
+  const filtrados = preceptores.filter((p: PreceptorAssignment) => !filtroCurso || p.curso.toLowerCase().includes(filtroCurso.toLowerCase()) || p.preceptorTitular.toLowerCase().includes(filtroCurso.toLowerCase()) || p.preceptorSuplente.toLowerCase().includes(filtroCurso.toLowerCase()))
+
+  return <div className="flex flex-col gap-6">
+    <div className="rounded-2xl border border-[#d7e8c9] bg-white p-4 sm:p-5 shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 mb-4">
+        <div>
+          <h3 className="font-black text-lg">Asignación de Preceptores por Curso</h3>
+          <p className="text-xs text-slate-500">Configurá el preceptor titular y suplente asignado a cada división de la escuela</p>
+        </div>
+        <div className="w-full sm:w-auto">
+          <input value={filtroCurso} onChange={(e) => setFiltroCurso(e.target.value)} placeholder="Filtrar curso o preceptor..." className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm w-full sm:w-64" />
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[600px] text-left text-sm">
+          <thead className="bg-[#f4faed] text-xs uppercase tracking-wider text-[#267018]">
+            <tr><th className="p-3">Curso / División</th><th>Preceptor Titular</th><th>Preceptor Suplente</th></tr>
+          </thead>
+          <tbody>
+            {filtrados.map((p: PreceptorAssignment) => (
+              <tr key={p.curso} className="border-t border-slate-100 hover:bg-slate-50">
+                <td className="p-3 font-bold text-base text-[#168000]">{p.curso}</td>
+                <td className="p-2">
+                  <input value={p.preceptorTitular} onChange={(e) => actualizarPreceptor(p.curso, 'preceptorTitular', e.target.value)} placeholder="Nombre del preceptor titular" className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm uppercase font-semibold" />
+                </td>
+                <td className="p-2">
+                  <input value={p.preceptorSuplente} onChange={(e) => actualizarPreceptor(p.curso, 'preceptorSuplente', e.target.value)} placeholder="Opcional (Suplente)" className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm uppercase font-semibold" />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
 }
 
-function StrikeView({ blocks, attendance, setAttendance, courses }: any) { 
-  const [date, setDate] = useState('2026-10-21')
-  const [selectedCourses, setSelectedCourses] = useState<string[]>(['Todos los cursos']) 
-  const visibleBlocks = selectedCourses.includes('Todos los cursos') ? blocks : blocks.filter((b: Block) => selectedCourses.includes(b.curso)) 
-  const visibleAbsentCount = visibleBlocks.filter((b: Block) => attendance[b.id] === 'paro').length 
-  const toggleCourse = (value: string) => setSelectedCourses((current) => value === 'Todos los cursos' ? ['Todos los cursos'] : current.includes(value) ? current.filter((item) => item !== value) : [...current.filter((item) => item !== 'Todos los cursos'), value]) 
-  const selectedLabel = selectedCourses.includes('Todos los cursos') ? 'Todos los cursos' : selectedCourses.join(', ') 
+function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDirty }: any) { 
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [cursoFiltro, setCursoFiltro] = useState('Todos')
   
-  return <div className="flex flex-col gap-4">
+  const paroDelDia = paroHistorial.filter((p: ParoRecord) => p.fecha === date)
+
+  function cambiarEstado(b: any, estado: Attendance, obs?: string) {
+    const existingIndex = paroHistorial.findIndex((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia)
+    const nuevoRegistro: ParoRecord = {
+      id: existingIndex >= 0 ? paroHistorial[existingIndex].id : `PARO-${Date.now().toString().slice(-4)}`,
+      fecha: date,
+      curso: b.curso,
+      horario: b.horario,
+      materia: b.materia,
+      docente: b.suplente || b.docente,
+      estadoParo: estado,
+      observaciones: obs !== undefined ? obs : (existingIndex >= 0 ? paroHistorial[existingIndex].observaciones : '')
+    }
+
+    if (existingIndex >= 0) {
+      const copy = [...paroHistorial]
+      copy[existingIndex] = nuevoRegistro
+      setParoHistorial(copy)
+    } else {
+      setParoHistorial([nuevoRegistro, ...paroHistorial])
+    }
+    setDirty((n: number) => n + 1)
+  }
+
+  const bloquesFiltrados = cursoFiltro === 'Todos' ? dayBlocks : dayBlocks.filter((b: Block) => b.curso === cursoFiltro)
+
+  const totalRelevados = bloquesFiltrados.length
+  const totalParo = bloquesFiltrados.filter((b: Block) => {
+    const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia)
+    return reg?.estadoParo === 'paro'
+  }).length
+
+  return <div className="flex flex-col gap-6">
     <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-4 shadow-sm">
-      <label className="text-sm font-bold">Fecha <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="ml-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-normal" /></label>
-      <span className="rounded-full bg-[#f4faed] px-3 py-2 text-sm font-bold text-[#267018]">Miércoles</span>
-      <div className="flex min-w-[280px] flex-1 flex-col gap-2">
-        <span className="text-xs font-bold text-slate-500">Cursos a relevar</span>
-        <div className="flex flex-wrap gap-1.5">
-          <button type="button" onClick={() => setSelectedCourses(['Todos los cursos'])} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${selectedCourses.includes('Todos los cursos') ? 'border-[#168000] bg-[#eaf7d9] text-[#168000]' : 'border-slate-200 text-slate-500'}`}>Todos</button>
-          {courses.map((c: string) => <button type="button" key={c} onClick={() => toggleCourse(c)} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${selectedCourses.includes(c) ? 'border-[#168000] bg-[#eaf7d9] text-[#168000]' : 'border-slate-200 text-slate-500'}`}>{c}</button>)}
-        </div>
-        <span className="text-[11px] text-slate-400">{selectedLabel || 'Seleccioná al menos un curso'}</span>
-      </div>
-      <Button variant="outline" className="ml-auto w-full sm:w-auto" onClick={() => visibleBlocks.forEach((b: Block) => setAttendance((a: any) => ({ ...a, [b.id]: 'normal' })))}>Marcar todos normal</Button>
+      <label className="text-sm font-bold">Fecha del Relevamiento <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="ml-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold" /></label>
+      <label className="flex items-center gap-2 text-sm font-bold sm:ml-auto">Curso 
+        <select value={cursoFiltro} onChange={(e) => setCursoFiltro(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold">
+          <option value="Todos">Todos los cursos</option>
+          {courses.map((c: string) => <option key={c}>{c}</option>)}
+        </select>
+      </label>
     </div>
     
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <Stat label="Bloques relevados" value={visibleBlocks.length} icon={<ListFilter />} />
-      <Stat label="Adhesiones al paro" value={visibleAbsentCount} icon={<ShieldCheck />} />
-      <Stat label="% acatamiento" value={visibleBlocks.length ? Math.round(visibleAbsentCount / visibleBlocks.length * 100) : 0} icon={<Zap />} />
+      <Stat label="Bloques en la fecha" value={totalRelevados} icon={<ListFilter />} />
+      <Stat label="Adhesiones al paro registradas" value={totalParo} icon={<ShieldCheck />} />
+      <Stat label="% acatamiento del día" value={totalRelevados ? Math.round(totalParo / totalRelevados * 100) : 0} icon={<Zap />} />
     </div>
 
     <div className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
       <div className="flex items-center justify-between border-b p-4">
         <div>
-          <h3 className="font-black">Parte diario · {date}</h3>
-          <p className="text-xs text-slate-500">Registro de asistencia y cobertura docente</p>
+          <h3 className="font-black text-lg">Registro de Paro · {date}</h3>
+          <p className="text-xs text-slate-500">Los cambios quedan guardados de manera persistente al apretar Guardar en Google Drive</p>
         </div>
         <Button variant="outline" size="sm" onClick={() => window.print()}><Printer data-icon="inline-start" />Imprimir parte</Button>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[850px] text-left text-sm">
           <thead className="bg-[#f4faed] text-xs uppercase tracking-wider text-[#267018]">
-            <tr><th className="p-3">Curso / horario</th><th>Materia</th><th>Docente activo</th><th>Estado</th><th>Observaciones</th></tr>
+            <tr><th className="p-3">Curso / horario</th><th>Materia</th><th>Docente activo</th><th>Estado (¿Hizo Paro?)</th><th>Observaciones</th></tr>
           </thead>
           <tbody>
-            {visibleBlocks.map((b: Block) => (
-              <tr key={b.id} className="border-t border-slate-100">
+            {bloquesFiltrados.map((b: Block) => {
+              const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia)
+              const estadoActual = reg?.estadoParo || 'normal'
+              const obsActual = reg?.observaciones || ''
+
+              return <tr key={b.id + b.curso} className="border-t border-slate-100 hover:bg-slate-50">
                 <td className="p-3 font-bold">{b.curso} {b.grupo && <span className="text-xs font-normal text-slate-500">({b.grupo})</span>}<div className="font-mono text-xs font-normal text-slate-500">{b.horario}</div></td>
                 <td>{b.materia}</td>
                 <td>
@@ -690,19 +760,23 @@ function StrikeView({ blocks, attendance, setAttendance, courses }: any) {
                 </td>
                 <td>
                   <div className="flex gap-1">
-                    <button onClick={() => setAttendance((a: any) => ({ ...a, [b.id]: 'normal' }))} className={`rounded-full px-2 py-1 text-[11px] font-bold ${attendance[b.id] === 'normal' ? 'bg-green-100 text-green-700 ring-1 ring-green-300' : 'bg-slate-100 text-slate-500'}`}>Normal</button>
-                    <button onClick={() => setAttendance((a: any) => ({ ...a, [b.id]: 'paro' }))} className={`rounded-full px-2 py-1 text-[11px] font-bold ${attendance[b.id] === 'paro' ? 'bg-red-100 text-red-700 ring-1 ring-red-300' : 'bg-slate-100 text-slate-500'}`}>Paro</button>
-                    <button onClick={() => setAttendance((a: any) => ({ ...a, [b.id]: 'ausente' }))} className={`rounded-full px-2 py-1 text-[11px] font-bold ${attendance[b.id] === 'ausente' ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-300' : 'bg-slate-100 text-slate-500'}`}>Licencia</button>
+                    <button type="button" onClick={() => cambiarEstado(b, 'normal')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'normal' ? 'bg-green-100 text-green-700 ring-1 ring-green-400' : 'bg-slate-100 text-slate-500'}`}>Normal</button>
+                    <button type="button" onClick={() => cambiarEstado(b, 'paro')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'paro' ? 'bg-red-100 text-red-700 ring-1 ring-red-400' : 'bg-slate-100 text-slate-500'}`}>Hizo Paro</button>
+                    <button type="button" onClick={() => cambiarEstado(b, 'licencia')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'licencia' ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-400' : 'bg-slate-100 text-slate-500'}`}>Licencia</button>
                   </div>
                 </td>
-                <td><input placeholder="Observación..." className="w-full min-w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#9dcc39]" /></td>
+                <td><input value={obsActual} onChange={(e) => cambiarEstado(b, estadoActual, e.target.value)} placeholder="Observación..." className="w-full min-w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#9dcc39]" /></td>
               </tr>
-            ))}
+            })}
           </tbody>
         </table>
       </div>
     </div>
   </div> 
+}
+
+function Stat({ label, value, icon }: { label: string; value: number; icon: React.ReactNode }) { 
+  return <div className="rounded-2xl border border-[#d7e8c9] bg-white p-3 sm:p-4 shadow-sm"><div className="mb-2 sm:mb-3 flex items-center justify-between text-[#168000]">{icon}<span className="text-xl sm:text-2xl font-black text-slate-900">{value}</span></div><p className="text-[11px] sm:text-xs font-bold text-slate-500">{label}</p></div> 
 }
 
 function Editor({ block, courses, onClose, onSave, onDelete }: { block: Block; courses: string[]; onClose: () => void; onSave: (b: Block) => void; onDelete: () => void }) { 
