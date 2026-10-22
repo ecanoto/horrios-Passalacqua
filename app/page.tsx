@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
+import { toPng } from 'html-to-image'
 import { Button } from '@/components/ui/button'
 import { CalendarDays, Check, ChevronDown, Cloud, Download, FileSpreadsheet, ListFilter, Pencil, Printer, Search, ShieldAlert, ShieldCheck, UserCheck, UserX, Users, X, Zap, Clock, Trash2, Plus, Image as ImageIcon } from 'lucide-react'
 
@@ -260,7 +261,7 @@ export default function Page() {
             <p className="mt-1 text-xs sm:text-sm text-slate-500">Actualización activa · {syncMessage}</p>
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            <Button variant="outline" className="flex-1 sm:flex-none" onClick={exportExcel}><FileSpreadsheet data-icon="inline-start" />Descargar Excel</Button>
+            <Button variant="outline" className="flex-1 sm:flex-none" onClick={exportExcel}><FileSpreadsheet data-icon="inline-start" />Descargar Excel General</Button>
             <Button className="bg-[#168000] text-white hover:bg-[#106500] flex-1 sm:flex-none" onClick={save}>
               {saved ? <Check data-icon="inline-start" /> : <Cloud data-icon="inline-start" />}
               {saved ? 'Guardado' : dirty ? `Guardar (${dirty})` : 'Guardar cambios'}
@@ -291,22 +292,68 @@ function Tab({ active, onClick, icon, label }: { active: boolean; onClick: () =>
 
 function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setSelectedDays, visible, blocks, setBlocks, courseTimes, courses, preceptores, setEditing, onAdd, onManageRecreos }: any) { 
   const tableRef = useRef<HTMLDivElement>(null)
+  const [downloadingImg, setDownloadingImg] = useState(false)
 
-  function descargarExcelCurso() {
+  // Descarga con estética profesional en Excel para el curso actual
+  function descargarExcelCursoEstetico() {
     const cursoBlocks = blocks.filter((b: Block) => b.curso === course)
+    const preceptorInfo = preceptores.find((p: PreceptorAssignment) => p.curso === course)
+
     const wb = XLSX.utils.book_new()
-    const ws = XLSX.utils.json_to_sheet(cursoBlocks.map(({ id, ...r }) => ({ ...r, 'Situación Revista': r.situacionRevista })))
+    
+    // Crear datos con cabeceras institucionales estilizadas
+    const exportData = [
+      ["E.E.S.T. N° 6 - BANFIELD"],
+      [`HORARIO ESCOLAR - CURSO: ${course}`],
+      [`Preceptor Titular: ${preceptorInfo?.preceptorTitular || 'No asignado'}  |  Suplente: ${preceptorInfo?.preceptorSuplente || 'Sin asignar'}`],
+      [""],
+      ["HORARIO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES"]
+    ]
+
+    courseTimes.forEach((time: string) => {
+      const isRecreo = blocks.some((x: Block) => x.curso === course && x.horario === time && x.tipo === 'Recreo')
+      if (isRecreo) {
+        exportData.push([time, "RECREO", "RECREO", "RECREO", "RECREO", "RECREO"])
+      } else {
+        const rowData = [time]
+        days.forEach(day => {
+          const match = cursoBlocks.filter((b: Block) => b.dia === day && b.horario === time && b.tipo !== 'Recreo')
+          if (match.length === 0) {
+            rowData.push("")
+          } else {
+            const txt = match.map(b => `${b.materia} (${b.docente}${b.suplente ? ' / Sup: ' + b.suplente : ''})${b.grupo ? ' [' + b.grupo + ']' : ''}`).join(" | ")
+            rowData.push(txt)
+          }
+        })
+        exportData.push(rowData)
+      }
+    })
+
+    const ws = XLSX.utils.aoa_to_sheet(exportData)
+    
+    // Ajustar anchos de columna elegantes
+    ws['!cols'] = [{ wch: 15 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }]
+
     XLSX.utils.book_append_sheet(wb, ws, `Curso_${course.replace('°', '_').replace('°', '')}`)
-    XLSX.writeFile(wb, `horario-curso-${course.replace('°', '').replace('°', '')}.xlsx`)
+    XLSX.writeFile(wb, `horario-curso-${course.replace('°', '').replace('°', '')}-estetico.xlsx`)
   }
 
-  function descargarImagenCurso() {
-    // Generar una descarga limpia imprimiendo en formato imagen / PDF con el nombre exacto del curso
-    const originalTitle = document.title
-    const safeCourseName = `horario-curso-${course.replace('°', '').replace('°', '')}`
-    document.title = safeCourseName
-    window.print()
-    document.title = originalTitle
+  // Descargar exactamente lo que se ve en pantalla como Imagen PNG con el nombre del curso
+  async function descargarImagenCurso() {
+    if (!tableRef.current) return
+    setDownloadingImg(true)
+    try {
+      const dataUrl = await toPng(tableRef.current, { cacheBust: true, backgroundColor: '#ffffff', quality: 0.95 })
+      const link = document.createElement('a')
+      link.download = `horario-curso-${course.replace('°', '').replace('°', '')}.png`
+      link.href = dataUrl
+      link.click()
+    } catch (err) {
+      console.error('Error al generar la imagen:', err)
+      alert('No se pudo generar la imagen. Probá nuevamente.')
+    } finally {
+      setDownloadingImg(false)
+    }
   }
 
   const preceptorDelCurso = preceptores.find((p: PreceptorAssignment) => p.curso === course)
@@ -326,8 +373,10 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
       </div>
       <div className="flex flex-wrap gap-2 sm:ml-auto w-full sm:w-auto">
         <Button variant="outline" className="flex-1 sm:flex-none border-[#ffb700] text-[#866500] hover:bg-[#fff8d8]" onClick={onManageRecreos}><Clock className="size-4 mr-1" /> Recreos</Button>
-        <Button variant="outline" className="flex-1 sm:flex-none border-blue-600 text-blue-700 hover:bg-blue-50" onClick={descargarExcelCurso}><FileSpreadsheet className="size-4 mr-1" /> Excel Curso</Button>
-        <Button variant="outline" className="flex-1 sm:flex-none border-purple-600 text-purple-700 hover:bg-purple-50" onClick={descargarImagenCurso}><ImageIcon className="size-4 mr-1" /> Descargar Imagen / PDF</Button>
+        <Button variant="outline" className="flex-1 sm:flex-none border-blue-600 text-blue-700 hover:bg-blue-50" onClick={descargarExcelCursoEstetico}><FileSpreadsheet className="size-4 mr-1" /> Excel Estético</Button>
+        <Button variant="outline" className="flex-1 sm:flex-none border-purple-600 text-purple-700 hover:bg-purple-50" onClick={descargarImagenCurso} disabled={downloadingImg}>
+          <ImageIcon className="size-4 mr-1" /> {downloadingImg ? 'Generando...' : 'Descargar Imagen (PNG)'}
+        </Button>
         <Button className="bg-[#168000] text-white hover:bg-[#106500] flex-1 sm:flex-none" onClick={onAdd}><span className="text-lg leading-none">+</span> Agregar</Button>
       </div>
     </div>
@@ -342,19 +391,25 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
       <span className="text-slate-500">Doble clic para editar · Usá los botones para descargar</span>
     </div>
 
-    {preceptorDelCurso && (
-      <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-xs font-bold text-blue-900 flex flex-wrap gap-4 items-center">
-        <span>Curso: <strong className="text-sm">{course}</strong></span>
-        <span>Preceptor Titular: <strong className="font-normal">{preceptorDelCurso.preceptorTitular || 'No asignado'}</strong></span>
-        {preceptorDelCurso.preceptorSuplente && <span>Preceptor Suplente: <strong className="font-normal">{preceptorDelCurso.preceptorSuplente}</strong></span>}
+    {/* Contenedor exacto que se captura para la imagen y vista de pantalla */}
+    <div ref={tableRef} className="overflow-x-auto rounded-2xl border border-[#d7e8c9] bg-white shadow-sm p-4">
+      {/* Membrete institucional que se incluye tanto en pantalla como en la imagen */}
+      <div className="mb-4 flex items-center justify-between border-b pb-3">
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="Escudo E.E.S.T. N° 6" className="size-10 object-contain" />
+          <div>
+            <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#168000]">E.E.S.T. N° 6 · Banfield</div>
+            <h3 className="text-sm font-black text-slate-900">Horario Escolar · Curso <span className="text-[#168000]">{course}</span></h3>
+          </div>
+        </div>
+        {preceptorDelCurso && (
+          <div className="text-right text-xs font-semibold text-slate-700">
+            <div>Preceptor Titular: <strong className="text-slate-900">{preceptorDelCurso.preceptorTitular || 'No asignado'}</strong></div>
+            {preceptorDelCurso.preceptorSuplente && <div>Suplente: <strong className="text-slate-900">{preceptorDelCurso.preceptorSuplente}</strong></div>}
+          </div>
+        )}
       </div>
-    )}
 
-    <div ref={tableRef} className="overflow-x-auto rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
-      <div className="hidden print:block p-4 border-b text-center">
-        <h2 className="text-lg font-black">E.E.S.T. N° 6 · Horario Escolar · Curso {course}</h2>
-        <p className="text-xs text-slate-500">Banfield · Lomas de Zamora</p>
-      </div>
       <section className="min-w-[760px]">
         <div className="grid grid-cols-[130px_repeat(5,1fr)] border-b bg-[#f4faed] text-xs font-extrabold uppercase tracking-wider text-[#267018]">
           <div className="p-3">Horario</div>
@@ -366,7 +421,7 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
           if (isRecreoRow) {
             const recreoBlock = blocks.find((x: Block) => x.curso === course && x.horario === time && x.tipo === 'Recreo')
             return (
-              <div key={time} onDoubleClick={() => recreoBlock && setEditing(recreoBlock)} className="grid grid-cols-[130px_1fr] border-b border-slate-100 bg-[#ffb700] text-slate-950 cursor-pointer print:cursor-default">
+              <div key={time} onDoubleClick={() => recreoBlock && setEditing(recreoBlock)} className="grid grid-cols-[130px_1fr] border-b border-slate-100 bg-[#ffb700] text-slate-950 cursor-pointer hover:bg-[#f5ad00] transition">
                 <div className="flex flex-col justify-center gap-1 p-2.5 font-mono text-xs font-black uppercase tracking-wider border-r border-[#e0a200]">
                   {time}
                 </div>
