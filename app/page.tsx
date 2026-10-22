@@ -56,7 +56,7 @@ type ParoRecord = {
 }
 
 const logo = '/logo.png'
-const spreadsheetApi = 'https://script.google.com/macros/s/AKfycby1HNcI2a2KEHdIdVsMy5gO-ojeS2-QV8yKGJCwMo1JuIC3lNnBIgnLZEN-wl1x2fNi/exec'
+const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbwu4e1jgQa9_FNL_bTRmug02v0P4_-weRsftCX99GityPQAwxUGvtIF54saJqiLVjp6/exec'
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
 const courses = ['1°1°', '1°2°', '1°3°', '1°4°', '1°5°', '1°6°', '2°1°', '2°2°', '2°3°', '2°4°', '2°5°', '2°6°', '3°1°', '3°2°', '3°3°', '3°4°', '3°5°', '3°6°', '4°1°', '4°2°', '4°3°', '4°4°', '4°5°', '5°1°', '5°2°', '5°3°', '5°6°', '5°7°', '6°1°', '6°2°', '6°3°', '6°6°', '6°7°', '7°1°', '7°2°', '7°3°', '7°6°', '7°7°']
 
@@ -130,7 +130,7 @@ export default function Page() {
 
   function descargarBaseCompletaExcel() {
     const wb = XLSX.utils.book_new()
-    const dataRows = blocks.map((b) => ({
+    const dataRows = blocks.map((b: Block) => ({
       Curso: b.curso,
       Turno: b.turno,
       Tipo: b.tipo,
