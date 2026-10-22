@@ -55,7 +55,9 @@ type ParoRecord = {
   grupo?: string;
 }
 
-const logo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-M35qmFS9dpbN14cGWOmnvOvidznySB.png'
+// Ruta apuntando al archivo que acabas de subir a la carpeta public
+const logo = '/logo.png'
+
 const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbwNLUJ3x0Ep2oD0007f0EVXtMwwfBGsBeravfwTAE4qv2pKUBlBYboLtWkPqx0fjdXv/exec'
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
 const courses = ['1°1°', '1°2°', '1°3°', '1°4°', '1°5°', '1°6°', '2°1°', '2°2°', '2°3°', '2°4°', '2°5°', '2°6°', '3°1°', '3°2°', '3°3°', '3°4°', '3°5°', '3°6°', '4°1°', '4°2°', '4°3°', '4°4°', '4°5°', '5°1°', '5°2°', '5°3°', '5°6°', '5°7°', '6°1°', '6°2°', '6°3°', '6°6°', '6°7°', '7°1°', '7°2°', '7°3°', '7°6°', '7°7°']
@@ -875,7 +877,7 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
     if (!paroRef.current) return
     setDownloadingImg(true)
     try {
-      const dataUrl = await toPng(paroRef.current, { cacheBust: true, backgroundColor: '#ffffff', quality: 0.95 })
+      const dataUrl = await toPng(paroRef.current, { cacheBust: true, backgroundColor: '#f5f8f2', quality: 0.95 })
       const link = document.createElement('a')
       link.download = `registro-paro-${date}${cursoFiltro !== 'Todos' ? '-' + cursoFiltro : ''}.png`
       link.href = dataUrl
