@@ -294,14 +294,12 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
   const tableRef = useRef<HTMLDivElement>(null)
   const [downloadingImg, setDownloadingImg] = useState(false)
 
-  // Descarga con estética profesional en Excel para el curso actual
   function descargarExcelCursoEstetico() {
     const cursoBlocks = blocks.filter((b: Block) => b.curso === course)
     const preceptorInfo = preceptores.find((p: PreceptorAssignment) => p.curso === course)
 
     const wb = XLSX.utils.book_new()
     
-    // Crear datos con cabeceras institucionales estilizadas
     const exportData = [
       ["E.E.S.T. N° 6 - BANFIELD"],
       [`HORARIO ESCOLAR - CURSO: ${course}`],
@@ -330,15 +328,12 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
     })
 
     const ws = XLSX.utils.aoa_to_sheet(exportData)
-    
-    // Ajustar anchos de columna elegantes
     ws['!cols'] = [{ wch: 15 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }]
 
     XLSX.utils.book_append_sheet(wb, ws, `Curso_${course.replace('°', '_').replace('°', '')}`)
     XLSX.writeFile(wb, `horario-curso-${course.replace('°', '').replace('°', '')}-estetico.xlsx`)
   }
 
-  // Descargar exactamente lo que se ve en pantalla como Imagen PNG con el nombre del curso
   async function descargarImagenCurso() {
     if (!tableRef.current) return
     setDownloadingImg(true)
@@ -391,9 +386,7 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
       <span className="text-slate-500">Doble clic para editar · Usá los botones para descargar</span>
     </div>
 
-    {/* Contenedor exacto que se captura para la imagen y vista de pantalla */}
     <div ref={tableRef} className="overflow-x-auto rounded-2xl border border-[#d7e8c9] bg-white shadow-sm p-4">
-      {/* Membrete institucional que se incluye tanto en pantalla como en la imagen */}
       <div className="mb-4 flex items-center justify-between border-b pb-3">
         <div className="flex items-center gap-3">
           <img src={logo} alt="Escudo E.E.S.T. N° 6" className="size-10 object-contain" />
@@ -897,7 +890,6 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
       <Stat label="Paros de Preceptores" value={totalPreceptoresParo} icon={<UserCheck />} />
     </div>
 
-    {/* Sección de Preceptores */}
     {!esFinDeSemana && preceptoresDelDia.length > 0 && (
       <div className="overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-sm">
         <div className="border-b bg-blue-50/50 p-4">
@@ -934,7 +926,6 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
       </div>
     )}
 
-    {/* Sección de Docentes */}
     <div className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
       <div className="flex items-center justify-between border-b p-4">
         <div>
