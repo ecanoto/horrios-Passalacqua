@@ -53,7 +53,7 @@ type ParoRecord = {
 }
 
 const logo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-M35qmFS9dpbN14cGWOmnvOvidznySB.png'
-const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbyzwuM5bDtNhaBZUHsgN7BzxcMwPEBqORz_PkGuzYpo7Y2jYclWMUMnqXGXN7WPZDJ7/exec'
+const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbyhkLcSgc7PLWKDYiC0Y5gpjIjN54lMXvPBkrDJuYXO9AJG2d45seRqYbOJShsLXnPU/exec'
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
 const courses = ['1°1°', '1°2°', '1°3°', '1°4°', '1°5°', '1°6°', '2°1°', '2°2°', '2°3°', '2°4°', '2°5°', '2°6°', '3°1°', '3°2°', '3°3°', '3°4°', '3°5°', '3°6°', '4°1°', '4°2°', '4°3°', '4°4°', '4°5°', '5°1°', '5°2°', '5°3°', '5°6°', '5°7°', '6°1°', '6°2°', '6°3°', '6°6°', '6°7°', '7°1°', '7°2°', '7°3°', '7°6°', '7°7°']
 
@@ -163,6 +163,15 @@ export default function Page() {
         setAusencias(normAus)
       }
 
+      if (payload.preceptores && Array.isArray(payload.preceptores)) {
+        const normPrec = payload.preceptores.map((p: any) => ({
+          curso: String(read(p, 'curso', 'Curso') || ''),
+          preceptorTitular: String(read(p, 'preceptorTitular', 'Preceptor Titular') || ''),
+          preceptorSuplente: String(read(p, 'preceptorSuplente', 'Preceptor Suplente') || '')
+        }))
+        if (normPrec.length > 0) setPreceptores(normPrec)
+      }
+
       if (payload.paroHistorial && Array.isArray(payload.paroHistorial)) {
         setParoHistorial(payload.paroHistorial)
       }
@@ -186,6 +195,7 @@ export default function Page() {
           action: 'replace', 
           rows: blocks.map(({ id, ...row }) => row), 
           ausencias: ausencias,
+          preceptores: preceptores,
           paroHistorial: paroHistorial 
         }) 
       }) 
