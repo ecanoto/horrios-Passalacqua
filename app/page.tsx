@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import { toPng } from 'html-to-image'
 import { Button } from '@/components/ui/button'
-import { CalendarDays, Check, ChevronDown, Cloud, Download, FileSpreadsheet, ListFilter, Pencil, Printer, Search, ShieldAlert, ShieldCheck, UserCheck, UserX, Users, X, Zap, Clock, Trash2, Plus, Image as ImageIcon } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, Cloud, Download, ListFilter, Pencil, Printer, Search, ShieldAlert, ShieldCheck, UserCheck, UserX, Users, X, Zap, Clock, Trash2, Plus, Image as ImageIcon, FileSpreadsheet } from 'lucide-react'
 
 type View = 'horario' | 'docentes' | 'ausencias' | 'preceptores' | 'paro'
 type Status = 'Titular' | 'Provisional' | 'Titular Interino'
@@ -56,25 +56,14 @@ type ParoRecord = {
 }
 
 const logo = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/logo-M35qmFS9dpbN14cGWOmnvOvidznySB.png'
-const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbx2kx8trSdHewDl9dLo6hE7t_uVJRsA0updvfFchEf9nA_SGL31hgl8Om8605qVzUjn/exec'
+const spreadsheetApi = 'https://script.google.com/macros/s/AKfycbwNLUJ3x0Ep2oD0007f0EVXtMwwfBGsBeravfwTAE4qv2pKUBlBYboLtWkPqx0fjdXv/exec'
 const days = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes']
 const courses = ['1°1°', '1°2°', '1°3°', '1°4°', '1°5°', '1°6°', '2°1°', '2°2°', '2°3°', '2°4°', '2°5°', '2°6°', '3°1°', '3°2°', '3°3°', '3°4°', '3°5°', '3°6°', '4°1°', '4°2°', '4°3°', '4°4°', '4°5°', '5°1°', '5°2°', '5°3°', '5°6°', '5°7°', '6°1°', '6°2°', '6°3°', '6°6°', '6°7°', '7°1°', '7°2°', '7°3°', '7°6°', '7°7°']
 
-const seed: Block[] = [
-  { id: '1', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–08:40', materia: 'Cs. Naturales', docente: 'MARTIN', situacionRevista: 'Titular' },
-  { id: '2', curso: '1°1°', turno: 'Teoría', tipo: 'Recreo', dia: 'Lunes', horario: '09:40–09:50', materia: 'Recreo', docente: '', situacionRevista: 'Titular' },
-  { id: '3', curso: '1°1°', turno: 'Teoría', tipo: 'Teoría', dia: 'Jueves', horario: '11:50–12:50', materia: 'Cs. Sociales', docente: 'BOGARIN', situacionRevista: 'Provisional' },
-  { id: '4', curso: '1°1°', turno: 'Taller', tipo: 'Taller', dia: 'Miércoles', horario: '13:00–15:00', materia: 'Lenguajes Tecnológicos', docente: 'OSORIO MARCELA', situacionRevista: 'Provisional', grupo: 'Grupo A' },
-]
-
-const seedAusencias: AusenciaRecord[] = [
-  { id: 'AUS-001', curso: '1°1°', mes: 'Abril', fecha: '2026-04-06', materia: 'Cs. Sociales', docenteAusente: 'BOGARIN', estadoCobertura: 'Cubierto por Decreto', docenteDecreto: 'ASPREA' },
-]
-
-const seedPreceptores: PreceptorAssignment[] = courses.map((c, idx) => ({
-  curso: c,
-  preceptorTitular: ['CAYATA', 'FEMIA', 'CEPEDA', 'NAHIA', 'ALFONSIN', 'GRISELDA'][idx % 6],
-  preceptorSuplente: idx % 3 === 0 ? 'RODRIGUEZ SILVINA' : ''
+const seed: Block[] = []
+const seedAusencias: AusenciaRecord[] = []
+const seedPreceptores: PreceptorAssignment[] = courses.map((c) => ({
+  curso: c, preceptorTitular: '', preceptorSuplente: ''
 }))
 
 const statusStyle: Record<Status, string> = { Titular: 'text-blue-700 bg-blue-50 border-blue-200', Provisional: 'text-red-700 bg-red-50 border-red-200', 'Titular Interino': 'text-gray-950 bg-gray-100 border-gray-300' }
@@ -116,15 +105,6 @@ export default function Page() {
     setDirty((n) => n + 1) 
   }
   
-  function exportExcel() { 
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(blocks.map(({ id, ...r }) => ({ ...r, 'Situación Revista': r.situacionRevista }))), 'DATA')
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ausencias), 'AUSENCIAS')
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(preceptores), 'PRECEPTORES')
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(paroHistorial), 'PARO_HISTORIAL')
-    XLSX.writeFile(wb, 'gestion-escolar-eest6.xlsx') 
-  }
-
   async function syncSpreadsheet() {
     setSyncing(true)
     try {
@@ -191,7 +171,7 @@ export default function Page() {
         setParoHistorial(normParo)
       }
 
-      setSyncMessage(`Conectado exitosamente (${courses.length} cursos cargados)`)
+      setSyncMessage(`Conectado exitosamente (${courses.length} cursos)`)
     } catch { 
       setSyncMessage('No se pudo conectar · usando datos locales') 
     } finally { 
@@ -238,7 +218,6 @@ export default function Page() {
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
           <Button variant="outline" size="sm" onClick={syncSpreadsheet} disabled={syncing}><Download data-icon="inline-start" />{syncing ? 'Conectando…' : 'Sincronizar'}</Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer data-icon="inline-start" />Imprimir</Button>
         </div>
       </div>
       <nav className="mx-auto flex max-w-[1500px] gap-1 overflow-x-auto px-4 sm:px-5 scrollbar-none" aria-label="Secciones">
@@ -261,7 +240,6 @@ export default function Page() {
             <p className="mt-1 text-xs sm:text-sm text-slate-500">Actualización activa · {syncMessage}</p>
           </div>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            <Button variant="outline" className="flex-1 sm:flex-none" onClick={exportExcel}><FileSpreadsheet data-icon="inline-start" />Descargar Excel General</Button>
             <Button className="bg-[#168000] text-white hover:bg-[#106500] flex-1 sm:flex-none" onClick={save}>
               {saved ? <Check data-icon="inline-start" /> : <Cloud data-icon="inline-start" />}
               {saved ? 'Guardado' : dirty ? `Guardar (${dirty})` : 'Guardar cambios'}
@@ -297,9 +275,7 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
   function descargarExcelCursoEstetico() {
     const cursoBlocks = blocks.filter((b: Block) => b.curso === course)
     const preceptorInfo = preceptores.find((p: PreceptorAssignment) => p.curso === course)
-
     const wb = XLSX.utils.book_new()
-    
     const exportData = [
       ["E.E.S.T. N° 6 - BANFIELD"],
       [`HORARIO ESCOLAR - CURSO: ${course}`],
@@ -307,7 +283,6 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
       [""],
       ["HORARIO", "LUNES", "MARTES", "MIÉRCOLES", "JUEVES", "VIERNES"]
     ]
-
     courseTimes.forEach((time: string) => {
       const isRecreo = blocks.some((x: Block) => x.curso === course && x.horario === time && x.tipo === 'Recreo')
       if (isRecreo) {
@@ -326,10 +301,8 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
         exportData.push(rowData)
       }
     })
-
     const ws = XLSX.utils.aoa_to_sheet(exportData)
     ws['!cols'] = [{ wch: 15 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }, { wch: 28 }]
-
     XLSX.utils.book_append_sheet(wb, ws, `Curso_${course.replace('°', '_').replace('°', '')}`)
     XLSX.writeFile(wb, `horario-curso-${course.replace('°', '').replace('°', '')}-estetico.xlsx`)
   }
@@ -386,7 +359,7 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
       <span className="text-slate-500">Doble clic para editar · Usá los botones para descargar</span>
     </div>
 
-    <div ref={tableRef} className="overflow-x-auto rounded-2xl border border-[#d7e8c9] bg-white shadow-sm p-4">
+    <div ref={tableRef} className="overflow-x-auto rounded-2xl border border-[#d7e8c9] bg-white shadow-sm p-4 print:p-0 print:border-none print:shadow-none">
       <div className="mb-4 flex items-center justify-between border-b pb-3">
         <div className="flex items-center gap-3">
           <img src={logo} alt="Escudo E.E.S.T. N° 6" className="size-10 object-contain" />
@@ -414,7 +387,7 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
           if (isRecreoRow) {
             const recreoBlock = blocks.find((x: Block) => x.curso === course && x.horario === time && x.tipo === 'Recreo')
             return (
-              <div key={time} onDoubleClick={() => recreoBlock && setEditing(recreoBlock)} className="grid grid-cols-[130px_1fr] border-b border-slate-100 bg-[#ffb700] text-slate-950 cursor-pointer hover:bg-[#f5ad00] transition">
+              <div key={time} onDoubleClick={() => recreoBlock && setEditing(recreoBlock)} className="grid grid-cols-[130px_1fr] border-b border-slate-100 bg-[#ffb700] text-slate-950 cursor-pointer hover:bg-[#f5ad00] transition print:cursor-default">
                 <div className="flex flex-col justify-center gap-1 p-2.5 font-mono text-xs font-black uppercase tracking-wider border-r border-[#e0a200]">
                   {time}
                 </div>
@@ -785,6 +758,9 @@ function PreceptoresView({ preceptores, setPreceptores, courses, setDirty }: any
 }
 
 function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDirty, preceptores }: any) { 
+  const paroRef = useRef<HTMLDivElement>(null)
+  const [downloadingImg, setDownloadingImg] = useState(false)
+
   const [date, setDate] = useState(new Date().toISOString().split('T')[0])
   const [cursoFiltro, setCursoFiltro] = useState('Todos')
   
@@ -861,6 +837,57 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
     setDirty((n: number) => n + 1)
   }
 
+  function descargarExcelParo() {
+    const wb = XLSX.utils.book_new()
+    const exportData = [
+      ["E.E.S.T. N° 6 - BANFIELD"],
+      [`REGISTRO DE PARO / ASISTENCIA - Fecha: ${date} (${nombreDiaSemana})`],
+      [`Curso filtrado: ${cursoFiltro}`],
+      [""]
+    ]
+
+    if (!esFinDeSemana && preceptoresDelDia.length > 0) {
+      exportData.push(["PRECEPTORES"])
+      exportData.push(["Curso / División", "Preceptor Titular", "Estado", "Observaciones"])
+      preceptoresDelDia.forEach((p: PreceptorAssignment) => {
+        const reg = paroHistorial.find((item: ParoRecord) => item.fecha === date && item.curso === p.curso && item.tipoPersonal === 'preceptor')
+        exportData.push([p.curso, p.preceptorTitular || "Sin asignar", reg?.estadoParo || 'normal', reg?.observaciones || ''])
+      })
+      exportData.push([""])
+    }
+
+    exportData.push(["DOCENTES"])
+    exportData.push(["Curso / Grupo", "Horario", "Materia", "Docente de turno", "Estado", "Observaciones"])
+    bloquesDelDia.forEach((b: Block) => {
+      const grupoKey = b.grupo || ''
+      const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia && (p.grupo || '') === grupoKey && p.tipoPersonal === 'docente')
+      exportData.push([`${b.curso}${b.grupo ? ' [' + b.grupo + ']' : ''}`, b.horario, b.materia, b.suplente || b.docente, reg?.estadoParo || 'normal', reg?.observaciones || ''])
+    })
+
+    const ws = XLSX.utils.aoa_to_sheet(exportData)
+    ws['!cols'] = [{ wch: 15 }, { wch: 15 }, { wch: 30 }, { wch: 30 }, { wch: 15 }, { wch: 40 }]
+
+    XLSX.utils.book_append_sheet(wb, ws, `Paro_${date}`)
+    XLSX.writeFile(wb, `registro-paro-${date}${cursoFiltro !== 'Todos' ? '-' + cursoFiltro : ''}.xlsx`)
+  }
+
+  async function descargarImagenParo() {
+    if (!paroRef.current) return
+    setDownloadingImg(true)
+    try {
+      const dataUrl = await toPng(paroRef.current, { cacheBust: true, backgroundColor: '#ffffff', quality: 0.95 })
+      const link = document.createElement('a')
+      link.download = `registro-paro-${date}${cursoFiltro !== 'Todos' ? '-' + cursoFiltro : ''}.png`
+      link.href = dataUrl
+      link.click()
+    } catch (err) {
+      console.error('Error al generar la imagen:', err)
+      alert('No se pudo generar la imagen. Probá nuevamente.')
+    } finally {
+      setDownloadingImg(false)
+    }
+  }
+
   const totalDocentesParo = bloquesDelDia.filter((b: Block) => {
     const grupoKey = b.grupo || ''
     const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia && (p.grupo || '') === grupoKey && p.tipoPersonal === 'docente')
@@ -873,104 +900,128 @@ function StrikeView({ dayBlocks, courses, paroHistorial, setParoHistorial, setDi
   }).length
 
   return <div className="flex flex-col gap-6">
-    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-4 shadow-sm">
-      <label className="text-sm font-bold">Fecha del Relevamiento <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="ml-2 rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold" /></label>
+    <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-3 shadow-sm print:hidden">
+      <label className="flex items-center gap-2 text-sm font-bold">Fecha <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold" /></label>
       <span className="rounded-full bg-[#f4faed] px-3 py-2 text-sm font-bold text-[#267018]">{nombreDiaSemana}</span>
-      <label className="flex items-center gap-2 text-sm font-bold sm:ml-auto">Curso 
+      <label className="flex items-center gap-2 text-sm font-bold ml-0 sm:ml-4">Curso 
         <select value={cursoFiltro} onChange={(e) => setCursoFiltro(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold">
           <option value="Todos">Todos los cursos</option>
           {courses.map((c: string) => <option key={c}>{c}</option>)}
         </select>
       </label>
+      
+      <div className="flex flex-wrap gap-2 sm:ml-auto w-full sm:w-auto">
+        <Button variant="outline" className="flex-1 sm:flex-none border-blue-600 text-blue-700 hover:bg-blue-50" onClick={descargarExcelParo}><FileSpreadsheet className="size-4 mr-1" /> Excel Paro</Button>
+        <Button variant="outline" className="flex-1 sm:flex-none border-purple-600 text-purple-700 hover:bg-purple-50" onClick={descargarImagenParo} disabled={downloadingImg}>
+          <ImageIcon className="size-4 mr-1" /> {downloadingImg ? 'Generando...' : 'Descargar Imagen (PNG)'}
+        </Button>
+      </div>
     </div>
     
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-      <Stat label={`Docentes con clase este ${nombreDiaSemana}`} value={bloquesDelDia.length} icon={<ListFilter />} />
-      <Stat label="Paros de Docentes" value={totalDocentesParo} icon={<ShieldCheck />} />
-      <Stat label="Paros de Preceptores" value={totalPreceptoresParo} icon={<UserCheck />} />
-    </div>
+    <div ref={paroRef} className="flex flex-col gap-4 p-4 rounded-2xl border border-[#d7e8c9] bg-white shadow-sm print:p-0 print:border-none print:shadow-none">
+      
+      <div className="flex items-center justify-between border-b border-[#d7e8c9] pb-4">
+        <div className="flex items-center gap-3">
+          <img src={logo} alt="Escudo E.E.S.T. N° 6" className="size-10 object-contain" />
+          <div>
+            <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#168000]">E.E.S.T. N° 6 · Banfield</div>
+            <h3 className="text-sm font-black text-slate-900">Registro de Paro y Asistencia · <span className="text-[#168000]">{date} ({nombreDiaSemana})</span></h3>
+          </div>
+        </div>
+        <div className="text-right text-xs font-semibold text-slate-700">
+          <div>Curso filtrado: <strong className="text-slate-900">{cursoFiltro}</strong></div>
+        </div>
+      </div>
 
-    {!esFinDeSemana && preceptoresDelDia.length > 0 && (
-      <div className="overflow-hidden rounded-2xl border border-blue-200 bg-white shadow-sm">
-        <div className="border-b bg-blue-50/50 p-4">
-          <h3 className="font-black text-lg text-blue-900">Control de Preceptores · {date}</h3>
-          <p className="text-xs text-slate-500">Registro de asistencia y adhesión al paro para el cuerpo de preceptores</p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 print:hidden">
+        <Stat label={`Docentes con clase este ${nombreDiaSemana}`} value={bloquesDelDia.length} icon={<ListFilter />} />
+        <Stat label="Paros de Docentes" value={totalDocentesParo} icon={<ShieldCheck />} />
+        <Stat label="Paros de Preceptores" value={totalPreceptoresParo} icon={<UserCheck />} />
+      </div>
+
+      {!esFinDeSemana && preceptoresDelDia.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-blue-200">
+          <div className="border-b bg-blue-50/50 p-3">
+            <h3 className="font-black text-sm text-blue-900">Control de Preceptores</h3>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[750px] text-left text-sm">
+              <thead className="bg-blue-50/80 text-xs uppercase tracking-wider text-blue-900">
+                <tr><th className="p-3">Curso / División</th><th>Preceptor Titular</th><th>Estado (¿Hizo Paro?)</th><th>Observaciones</th></tr>
+              </thead>
+              <tbody>
+                {preceptoresDelDia.map((p: PreceptorAssignment) => {
+                  const reg = paroHistorial.find((item: ParoRecord) => item.fecha === date && item.curso === p.curso && item.tipoPersonal === 'preceptor')
+                  const estadoActual = reg?.estadoParo || 'normal'
+                  const obsActual = reg?.observaciones || ''
+
+                  return <tr key={p.curso} className="border-t border-slate-100 hover:bg-slate-50">
+                    <td className="p-3 font-bold text-[#168000]">{p.curso}</td>
+                    <td className="font-semibold text-slate-800">{p.preceptorTitular || <span className="text-slate-400 font-normal">Sin asignar</span>} {p.preceptorSuplente && <span className="block text-xs font-normal text-slate-500">Suplente: {p.preceptorSuplente}</span>}</td>
+                    <td>
+                      <div className="flex gap-1 print:hidden">
+                        <button type="button" onClick={() => cambiarEstadoPreceptor(p, 'normal')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'normal' ? 'bg-green-100 text-green-700 ring-1 ring-green-400' : 'bg-slate-100 text-slate-500'}`}>Normal</button>
+                        <button type="button" onClick={() => cambiarEstadoPreceptor(p, 'paro')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'paro' ? 'bg-red-100 text-red-700 ring-1 ring-red-400' : 'bg-slate-100 text-slate-500'}`}>Hizo Paro</button>
+                        <button type="button" onClick={() => cambiarEstadoPreceptor(p, 'licencia')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'licencia' ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-400' : 'bg-slate-100 text-slate-500'}`}>Licencia</button>
+                      </div>
+                      <div className="hidden print:block font-bold">
+                        {estadoActual === 'normal' ? '✅ Normal' : estadoActual === 'paro' ? '🛑 Hizo Paro' : '⚠️ Licencia'}
+                      </div>
+                    </td>
+                    <td><input value={obsActual} onChange={(e) => cambiarEstadoPreceptor(p, estadoActual, e.target.value)} placeholder="Observación preceptor..." className="w-full min-w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400" /></td>
+                  </tr>
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-hidden rounded-xl border border-[#d7e8c9]">
+        <div className="border-b p-3 bg-[#f4faed]">
+          <h3 className="font-black text-sm text-[#267018]">Registro de Paro Docente</h3>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[750px] text-left text-sm">
-            <thead className="bg-blue-50/80 text-xs uppercase tracking-wider text-blue-900">
-              <tr><th className="p-3">Curso / División</th><th>Preceptor Titular</th><th>Estado (¿Hizo Paro?)</th><th>Observaciones</th></tr>
+          <table className="w-full min-w-[850px] text-left text-sm">
+            <thead className="bg-[#f4faed] text-xs uppercase tracking-wider text-[#267018]">
+              <tr><th className="p-3">Curso / horario</th><th>Materia</th><th>Docente de turno</th><th>Estado (¿Hizo Paro?)</th><th>Observaciones</th></tr>
             </thead>
             <tbody>
-              {preceptoresDelDia.map((p: PreceptorAssignment) => {
-                const reg = paroHistorial.find((item: ParoRecord) => item.fecha === date && item.curso === p.curso && item.tipoPersonal === 'preceptor')
-                const estadoActual = reg?.estadoParo || 'normal'
-                const obsActual = reg?.observaciones || ''
+              {esFinDeSemana ? (
+                <tr><td colSpan={5} className="p-6 text-center text-slate-400 font-semibold">Los fines de semana no hay actividad escolar programada.</td></tr>
+              ) : bloquesDelDia.length === 0 ? (
+                <tr><td colSpan={5} className="p-6 text-center text-slate-400 font-semibold">No hay docentes programados para este día con los filtros seleccionados.</td></tr>
+              ) : (
+                bloquesDelDia.map((b: Block) => {
+                  const grupoKey = b.grupo || ''
+                  const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia && (p.grupo || '') === grupoKey && p.tipoPersonal === 'docente')
+                  const estadoActual = reg?.estadoParo || 'normal'
+                  const obsActual = reg?.observaciones || ''
 
-                return <tr key={p.curso} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="p-3 font-bold text-[#168000]">{p.curso}</td>
-                  <td className="font-semibold text-slate-800">{p.preceptorTitular || <span className="text-slate-400 font-normal">Sin asignar</span>} {p.preceptorSuplente && <span className="block text-xs font-normal text-slate-500">Suplente: {p.preceptorSuplente}</span>}</td>
-                  <td>
-                    <div className="flex gap-1">
-                      <button type="button" onClick={() => cambiarEstadoPreceptor(p, 'normal')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'normal' ? 'bg-green-100 text-green-700 ring-1 ring-green-400' : 'bg-slate-100 text-slate-500'}`}>Normal</button>
-                      <button type="button" onClick={() => cambiarEstadoPreceptor(p, 'paro')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'paro' ? 'bg-red-100 text-red-700 ring-1 ring-red-400' : 'bg-slate-100 text-slate-500'}`}>Hizo Paro</button>
-                      <button type="button" onClick={() => cambiarEstadoPreceptor(p, 'licencia')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'licencia' ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-400' : 'bg-slate-100 text-slate-500'}`}>Licencia</button>
-                    </div>
-                  </td>
-                  <td><input value={obsActual} onChange={(e) => cambiarEstadoPreceptor(p, estadoActual, e.target.value)} placeholder="Observación preceptor..." className="w-full min-w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400" /></td>
-                </tr>
-              })}
+                  return <tr key={b.id + b.curso + grupoKey} className="border-t border-slate-100 hover:bg-slate-50">
+                    <td className="p-3 font-bold">{b.curso} {b.grupo && <span className="rounded bg-[#168000] px-1.5 py-0.5 text-[9px] font-black text-white ml-1">{b.grupo}</span>}<div className="font-mono text-xs font-normal text-slate-500">{b.horario}</div></td>
+                    <td>{b.materia}</td>
+                    <td>
+                      <span className={b.suplente ? 'font-bold text-green-700' : 'font-semibold'}>{b.suplente || b.docente}</span>
+                      {b.suplente && <div className="text-xs text-slate-500">Titular: {b.docente}</div>}
+                    </td>
+                    <td>
+                      <div className="flex gap-1 print:hidden">
+                        <button type="button" onClick={() => cambiarEstadoDocente(b, 'normal')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'normal' ? 'bg-green-100 text-green-700 ring-1 ring-green-400' : 'bg-slate-100 text-slate-500'}`}>Normal</button>
+                        <button type="button" onClick={() => cambiarEstadoDocente(b, 'paro')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'paro' ? 'bg-red-100 text-red-700 ring-1 ring-red-400' : 'bg-slate-100 text-slate-500'}`}>Hizo Paro</button>
+                        <button type="button" onClick={() => cambiarEstadoDocente(b, 'licencia')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'licencia' ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-400' : 'bg-slate-100 text-slate-500'}`}>Licencia</button>
+                      </div>
+                      <div className="hidden print:block font-bold">
+                        {estadoActual === 'normal' ? '✅ Normal' : estadoActual === 'paro' ? '🛑 Hizo Paro' : '⚠️ Licencia'}
+                      </div>
+                    </td>
+                    <td><input value={obsActual} onChange={(e) => cambiarEstadoDocente(b, estadoActual, e.target.value)} placeholder="Observación..." className="w-full min-w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#9dcc39]" /></td>
+                  </tr>
+                })
+              )}
             </tbody>
           </table>
         </div>
-      </div>
-    )}
-
-    <div className="overflow-hidden rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b p-4">
-        <div>
-          <h3 className="font-black text-lg">Registro de Paro Docente · {date} ({nombreDiaSemana})</h3>
-          <p className="text-xs text-slate-500">Docentes programados con clase en este día</p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => window.print()}><Printer data-icon="inline-start" />Imprimir parte</Button>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[850px] text-left text-sm">
-          <thead className="bg-[#f4faed] text-xs uppercase tracking-wider text-[#267018]">
-            <tr><th className="p-3">Curso / horario</th><th>Materia</th><th>Docente de turno</th><th>Estado (¿Hizo Paro?)</th><th>Observaciones</th></tr>
-          </thead>
-          <tbody>
-            {esFinDeSemana ? (
-              <tr><td colSpan={5} className="p-6 text-center text-slate-400 font-semibold">Los fines de semana no hay actividad escolar programada.</td></tr>
-            ) : bloquesDelDia.length === 0 ? (
-              <tr><td colSpan={5} className="p-6 text-center text-slate-400 font-semibold">No hay docentes programados para este día con los filtros seleccionados.</td></tr>
-            ) : (
-              bloquesDelDia.map((b: Block) => {
-                const grupoKey = b.grupo || ''
-                const reg = paroHistorial.find((p: ParoRecord) => p.fecha === date && p.curso === b.curso && p.horario === b.horario && p.materia === b.materia && (p.grupo || '') === grupoKey && p.tipoPersonal === 'docente')
-                const estadoActual = reg?.estadoParo || 'normal'
-                const obsActual = reg?.observaciones || ''
-
-                return <tr key={b.id + b.curso + grupoKey} className="border-t border-slate-100 hover:bg-slate-50">
-                  <td className="p-3 font-bold">{b.curso} {b.grupo && <span className="rounded bg-[#168000] px-1.5 py-0.5 text-[9px] font-black text-white ml-1">{b.grupo}</span>}<div className="font-mono text-xs font-normal text-slate-500">{b.horario}</div></td>
-                  <td>{b.materia}</td>
-                  <td>
-                    <span className={b.suplente ? 'font-bold text-green-700' : 'font-semibold'}>{b.suplente || b.docente}</span>
-                    {b.suplente && <div className="text-xs text-slate-500">Titular: {b.docente}</div>}
-                  </td>
-                  <td>
-                    <div className="flex gap-1">
-                      <button type="button" onClick={() => cambiarEstadoDocente(b, 'normal')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'normal' ? 'bg-green-100 text-green-700 ring-1 ring-green-400' : 'bg-slate-100 text-slate-500'}`}>Normal</button>
-                      <button type="button" onClick={() => cambiarEstadoDocente(b, 'paro')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'paro' ? 'bg-red-100 text-red-700 ring-1 ring-red-400' : 'bg-slate-100 text-slate-500'}`}>Hizo Paro</button>
-                      <button type="button" onClick={() => cambiarEstadoDocente(b, 'licencia')} className={`rounded-full px-2.5 py-1 text-xs font-bold ${estadoActual === 'licencia' ? 'bg-amber-100 text-amber-700 ring-1 ring-amber-400' : 'bg-slate-100 text-slate-500'}`}>Licencia</button>
-                    </div>
-                  </td>
-                  <td><input value={obsActual} onChange={(e) => cambiarEstadoDocente(b, estadoActual, e.target.value)} placeholder="Observación..." className="w-full min-w-40 rounded-lg border border-slate-200 px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#9dcc39]" /></td>
-                </tr>
-              })
-            )}
-          </tbody>
-        </table>
       </div>
     </div>
   </div> 
