@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import { Button } from '@/components/ui/button'
-import { CalendarDays, Check, ChevronDown, Cloud, Download, FileSpreadsheet, ListFilter, Pencil, Printer, Search, ShieldAlert, ShieldCheck, UserCheck, UserX, Users, X, Zap, Clock, Trash2, Plus } from 'lucide-react'
+import { CalendarDays, Check, ChevronDown, Cloud, Download, FileSpreadsheet, ListFilter, Pencil, Printer, Search, ShieldAlert, ShieldCheck, UserCheck, UserX, Users, X, Zap, Clock, Trash2, Plus, Image as ImageIcon } from 'lucide-react'
 
 type View = 'horario' | 'docentes' | 'ausencias' | 'preceptores' | 'paro'
 type Status = 'Titular' | 'Provisional' | 'Titular Interino'
@@ -269,7 +269,7 @@ export default function Page() {
         </div>
       </div>
 
-      {view === 'horario' && <ScheduleView course={course} setCourse={setCourse} filter={filter} setFilter={setFilter} selectedDays={selectedDays} setSelectedDays={setSelectedDays} visible={visible} blocks={blocks} setBlocks={setBlocks} courseTimes={courseTimes} courses={courses} setEditing={setEditing} onAdd={() => setEditing({ id: crypto.randomUUID(), curso: course, turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–08:40', materia: 'Nueva materia', docente: '', situacionRevista: 'Titular' })} onManageRecreos={() => setShowRecreosModal(true)} />}
+      {view === 'horario' && <ScheduleView course={course} setCourse={setCourse} filter={filter} setFilter={setFilter} selectedDays={selectedDays} setSelectedDays={setSelectedDays} visible={visible} blocks={blocks} setBlocks={setBlocks} courseTimes={courseTimes} courses={courses} preceptores={preceptores} setEditing={setEditing} onAdd={() => setEditing({ id: crypto.randomUUID(), curso: course, turno: 'Teoría', tipo: 'Teoría', dia: 'Lunes', horario: '07:40–08:40', materia: 'Nueva materia', docente: '', situacionRevista: 'Titular' })} onManageRecreos={() => setShowRecreosModal(true)} />}
       {view === 'docentes' && <TeacherView query={query} setQuery={setQuery} teachers={teachers} results={searchResults} setEditing={setEditing} />}
       {view === 'ausencias' && <AusenciasView ausencias={ausencias} setAusencias={setAusencias} setDirty={setDirty} courses={courses} />}
       {view === 'preceptores' && <PreceptoresView preceptores={preceptores} setPreceptores={setPreceptores} courses={courses} setDirty={setDirty} />}
@@ -289,9 +289,30 @@ function Tab({ active, onClick, icon, label }: { active: boolean; onClick: () =>
   return <button onClick={onClick} className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-bold transition whitespace-nowrap ${active ? 'border-[#168000] text-[#168000]' : 'border-transparent text-slate-500 hover:text-slate-800'}`}>{icon}<span>{label}</span></button> 
 }
 
-function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setSelectedDays, visible, blocks, setBlocks, courseTimes, courses, setEditing, onAdd, onManageRecreos }: any) { 
+function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setSelectedDays, visible, blocks, setBlocks, courseTimes, courses, preceptores, setEditing, onAdd, onManageRecreos }: any) { 
+  const tableRef = useRef<HTMLDivElement>(null)
+
+  function descargarExcelCurso() {
+    const cursoBlocks = blocks.filter((b: Block) => b.curso === course)
+    const wb = XLSX.utils.book_new()
+    const ws = XLSX.utils.json_to_sheet(cursoBlocks.map(({ id, ...r }) => ({ ...r, 'Situación Revista': r.situacionRevista })))
+    XLSX.utils.book_append_sheet(wb, ws, `Curso_${course.replace('°', '_').replace('°', '')}`)
+    XLSX.writeFile(wb, `horario-curso-${course.replace('°', '').replace('°', '')}.xlsx`)
+  }
+
+  function descargarImagenCurso() {
+    // Generar una descarga limpia imprimiendo en formato imagen / PDF con el nombre exacto del curso
+    const originalTitle = document.title
+    const safeCourseName = `horario-curso-${course.replace('°', '').replace('°', '')}`
+    document.title = safeCourseName
+    window.print()
+    document.title = originalTitle
+  }
+
+  const preceptorDelCurso = preceptores.find((p: PreceptorAssignment) => p.curso === course)
+
   return <>
-    <div className="mb-4 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-3 shadow-sm">
+    <div className="mb-4 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 rounded-2xl border border-[#d7e8c9] bg-white p-3 shadow-sm print:hidden">
       <label className="flex items-center justify-between sm:justify-start gap-2 text-sm font-bold">Curso 
         <select value={course} onChange={(e) => setCourse(e.target.value)} className="rounded-lg border border-slate-200 bg-white px-3 py-2 font-semibold outline-none focus:ring-2 focus:ring-[#9dcc39]">
           {courses.map((c: string) => <option key={c}>{c}</option>)}
@@ -303,23 +324,37 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
       <div className="flex rounded-lg bg-slate-100 p-1 justify-center">
         {(['Todos', 'Teoría', 'Taller'] as const).map((x) => <button key={x} onClick={() => setFilter(x)} className={`rounded-md px-3 py-1.5 text-xs font-bold ${filter === x ? 'bg-white text-[#168000] shadow-sm' : 'text-slate-500'}`}>{x === 'Todos' ? 'Todos' : `Solo ${x}`}</button>)}
       </div>
-      <div className="flex gap-2 sm:ml-auto w-full sm:w-auto">
+      <div className="flex flex-wrap gap-2 sm:ml-auto w-full sm:w-auto">
         <Button variant="outline" className="flex-1 sm:flex-none border-[#ffb700] text-[#866500] hover:bg-[#fff8d8]" onClick={onManageRecreos}><Clock className="size-4 mr-1" /> Recreos</Button>
+        <Button variant="outline" className="flex-1 sm:flex-none border-blue-600 text-blue-700 hover:bg-blue-50" onClick={descargarExcelCurso}><FileSpreadsheet className="size-4 mr-1" /> Excel Curso</Button>
+        <Button variant="outline" className="flex-1 sm:flex-none border-purple-600 text-purple-700 hover:bg-purple-50" onClick={descargarImagenCurso}><ImageIcon className="size-4 mr-1" /> Descargar Imagen / PDF</Button>
         <Button className="bg-[#168000] text-white hover:bg-[#106500] flex-1 sm:flex-none" onClick={onAdd}><span className="text-lg leading-none">+</span> Agregar</Button>
       </div>
     </div>
     
-    <div className="mb-4 flex flex-col sm:flex-row flex-wrap gap-2 text-xs font-semibold justify-between items-start sm:items-center">
+    <div className="mb-4 flex flex-col sm:flex-row flex-wrap gap-2 text-xs font-semibold justify-between items-start sm:items-center print:hidden">
       <div className="flex flex-wrap gap-2">
         <Legend color="bg-blue-600" label="Titular" />
         <Legend color="bg-red-600" label="Provisional" />
         <Legend color="bg-gray-900" label="Titular interino" />
         <Legend color="bg-green-600" label="Suplente" />
       </div>
-      <span className="text-slate-500">Doble clic para editar</span>
+      <span className="text-slate-500">Doble clic para editar · Usá los botones para descargar</span>
     </div>
 
-    <div className="overflow-x-auto rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
+    {preceptorDelCurso && (
+      <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-xs font-bold text-blue-900 flex flex-wrap gap-4 items-center">
+        <span>Curso: <strong className="text-sm">{course}</strong></span>
+        <span>Preceptor Titular: <strong className="font-normal">{preceptorDelCurso.preceptorTitular || 'No asignado'}</strong></span>
+        {preceptorDelCurso.preceptorSuplente && <span>Preceptor Suplente: <strong className="font-normal">{preceptorDelCurso.preceptorSuplente}</strong></span>}
+      </div>
+    )}
+
+    <div ref={tableRef} className="overflow-x-auto rounded-2xl border border-[#d7e8c9] bg-white shadow-sm">
+      <div className="hidden print:block p-4 border-b text-center">
+        <h2 className="text-lg font-black">E.E.S.T. N° 6 · Horario Escolar · Curso {course}</h2>
+        <p className="text-xs text-slate-500">Banfield · Lomas de Zamora</p>
+      </div>
       <section className="min-w-[760px]">
         <div className="grid grid-cols-[130px_repeat(5,1fr)] border-b bg-[#f4faed] text-xs font-extrabold uppercase tracking-wider text-[#267018]">
           <div className="p-3">Horario</div>
@@ -331,13 +366,12 @@ function ScheduleView({ course, setCourse, filter, setFilter, selectedDays, setS
           if (isRecreoRow) {
             const recreoBlock = blocks.find((x: Block) => x.curso === course && x.horario === time && x.tipo === 'Recreo')
             return (
-              <div key={time} onDoubleClick={() => recreoBlock && setEditing(recreoBlock)} className="grid grid-cols-[130px_1fr] border-b border-slate-100 bg-[#ffb700] text-slate-950 cursor-pointer hover:bg-[#f5ad00] transition">
+              <div key={time} onDoubleClick={() => recreoBlock && setEditing(recreoBlock)} className="grid grid-cols-[130px_1fr] border-b border-slate-100 bg-[#ffb700] text-slate-950 cursor-pointer print:cursor-default">
                 <div className="flex flex-col justify-center gap-1 p-2.5 font-mono text-xs font-black uppercase tracking-wider border-r border-[#e0a200]">
                   {time}
                 </div>
-                <div className="flex items-center justify-between px-4 py-2 text-xs font-black uppercase tracking-[0.3em]">
+                <div className="flex items-center justify-center px-4 py-2 text-xs font-black uppercase tracking-[0.3em]">
                   <span>RECREO</span>
-                  <span className="text-[10px] font-bold lowercase opacity-75">(Doble clic para editar)</span>
                 </div>
               </div>
             )
